@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --crypto-dark: #0a0a0f;
+  --crypto-dark-2: #1a1a2e;
+  --crypto-green: #00ff88;
+  --crypto-blue: #48cae4;
+  --crypto-red: #ff4757;
+  --crypto-yellow: #feca57;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+  color: white;
+  min-height: 100vh;
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.5);
+}
+
+/* 카드 기본 스타일 */
+.card {
+  @apply bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl p-6 transition-all duration-300;
+}
+
+.card:hover {
+  @apply border-crypto-green/30 shadow-lg;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.1);
+}
+
+/* 버튼 스타일 */
+.btn-primary {
+  @apply px-6 py-3 bg-gradient-to-r from-crypto-green to-crypto-blue text-crypto-dark font-bold rounded-xl transition-all duration-300;
+}
+
+.btn-primary:hover {
+  @apply transform -translate-y-0.5;
+  box-shadow: 0 5px 20px rgba(0, 255, 136, 0.3);
+}
+
+.btn-secondary {
+  @apply px-6 py-3 bg-white/10 text-white font-medium rounded-xl border border-white/20 transition-all duration-300;
+}
+
+.btn-secondary:hover {
+  @apply bg-white/20 border-crypto-green/50;
+}
+
+/* 입력 필드 스타일 */
+.input-field {
+  @apply w-full px-4 py-3 bg-white/5 border-2 border-white/10 rounded-xl text-white placeholder-white/50 transition-all duration-300;
+}
+
+.input-field:focus {
+  @apply outline-none border-crypto-green/50;
+  box-shadow: 0 0 15px rgba(0, 255, 136, 0.1);
+}
+
+/* 가격 카드 스타일 */
+.price-card {
+  @apply card border-2;
+}
+
+.price-card.bullish {
+  @apply border-crypto-green;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.2);
+}
+
+.price-card.bearish {
+  @apply border-crypto-red;
+  box-shadow: 0 0 20px rgba(255, 71, 87, 0.2);
+}
+
+.price-card.neutral {
+  @apply border-crypto-yellow;
+  box-shadow: 0 0 20px rgba(254, 202, 87, 0.2);
+}
+
+/* 그라데이션 텍스트 */
+.gradient-text {
+  @apply bg-gradient-to-r from-crypto-green to-crypto-blue bg-clip-text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* PRO 뱃지 */
+.pro-badge {
+  @apply inline-flex items-center px-2 py-1 text-xs font-bold rounded-full bg-gradient-to-r from-crypto-green to-crypto-blue text-crypto-dark;
+}
+
+/* 로딩 스피너 */
+.spinner {
+  @apply w-8 h-8 border-4 border-crypto-green/30 border-t-crypto-green rounded-full animate-spin;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .card {
+    @apply p-4;
+  }
+}
