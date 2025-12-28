@@ -8,7 +8,7 @@ export default function Privacy() {
       {/* 헤더 */}
       <header className="border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <Link href="/" className="text-xl font-bold">🚀 크립토 PRO</Link>
+          <Link href="/" className="text-xl font-bold">🧭 투자나침반</Link>
         </div>
       </header>
 
@@ -21,7 +21,7 @@ export default function Privacy() {
           
           {/* 개요 */}
           <section>
-            <p>크립토 PRO(이하 "회사")는 이용자의 개인정보를 중요시하며, 「개인정보 보호법」, 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」 등 관련 법령을 준수하고 있습니다. 회사는 개인정보처리방침을 통하여 이용자의 개인정보가 어떠한 용도와 방식으로 이용되고 있으며, 개인정보보호를 위해 어떠한 조치가 취해지고 있는지 알려드립니다.</p>
+            <p>투자나침반(이하 "회사")는 이용자의 개인정보를 중요시하며, 「개인정보 보호법」, 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」 등 관련 법령을 준수하고 있습니다. 회사는 개인정보처리방침을 통하여 이용자의 개인정보가 어떠한 용도와 방식으로 이용되고 있으며, 개인정보보호를 위해 어떠한 조치가 취해지고 있는지 알려드립니다.</p>
           </section>
 
           {/* 제1조 */}
