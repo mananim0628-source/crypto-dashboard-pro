@@ -65,12 +65,20 @@ export default function Dashboard() {
   const router = useRouter()
   const supabase = createClientComponentClient()
 
-  // 점수 계산 함수
+  // 모달 열릴 때 body 스크롤 잠금
+  useEffect(() => {
+    if (showDetail) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = 'unset'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [showDetail])
+
   const calculateScores = (coin: CoinData): ChecklistScores => {
     const priceChange = coin.price_change_percentage_24h || 0
-    const volatility = coin.high_24h && coin.low_24h 
-      ? ((coin.high_24h - coin.low_24h) / coin.low_24h) * 100 
-      : 5
 
     const macro = Math.min(20, Math.max(5, 12 + (Math.random() * 6 - 3)))
     const etf = Math.min(25, Math.max(8, 15 + (Math.random() * 8 - 4)))
@@ -273,112 +281,137 @@ export default function Dashboard() {
     )
   }
 
+  // 수정된 모달 컴포넌트 - 스크롤 문제 해결
   const CoinDetailModal = ({ coin, onClose }: { coin: AnalyzedCoin; onClose: () => void }) => {
     const isPro = profile?.plan !== 'free'
 
     return (
-      <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
-        <div 
-          className="bg-[#1a1a2e] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
-          onClick={e => e.stopPropagation()}
-        >
-          <div className="p-6 border-b border-white/10">
-            <div className="flex justify-between items-start">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <h2 className="text-2xl font-bold">{coin.symbol.toUpperCase()}</h2>
-                  <SignalBadge signal={coin.signal} />
+      <div 
+        className="fixed inset-0 bg-black/80 z-50 overflow-y-auto"
+        onClick={onClose}
+      >
+        <div className="min-h-full flex items-center justify-center p-4">
+          <div 
+            className="bg-[#1a1a2e] rounded-2xl max-w-2xl w-full border border-white/10 my-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 헤더 */}
+            <div className="p-6 border-b border-white/10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <h2 className="text-2xl font-bold">{coin.symbol.toUpperCase()}</h2>
+                    <SignalBadge signal={coin.signal} />
+                  </div>
+                  <p className="text-white/50">{coin.name}</p>
                 </div>
-                <p className="text-white/50">{coin.name}</p>
+                <button 
+                  onClick={onClose} 
+                  className="text-white/50 hover:text-white text-2xl p-2 hover:bg-white/10 rounded-lg transition"
+                >
+                  ✕
+                </button>
               </div>
-              <button onClick={onClose} className="text-white/50 hover:text-white text-2xl">✕</button>
+              <div className="mt-4">
+                <span className="text-3xl font-bold text-[#00d395]">
+                  ${coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                </span>
+                <span className={`ml-3 ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>
+                  {coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h?.toFixed(2)}%
+                </span>
+              </div>
             </div>
-            <div className="mt-4">
-              <span className="text-3xl font-bold text-[#00d395]">
-                ${coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}
-              </span>
-              <span className={`ml-3 ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>
-                {coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h?.toFixed(2)}%
-              </span>
+
+            {/* 7단계 체크리스트 */}
+            <div className="p-6 border-b border-white/10">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                📊 7단계 체크리스트 분석
+                <span className="text-[#00d395] text-2xl font-bold">{coin.scores.total}/140</span>
+              </h3>
+              
+              {isPro ? (
+                <div className="space-y-3">
+                  <ScoreBar label="1. 거시환경 (금리/달러/증시)" score={coin.scores.macro} max={20} color="bg-blue-500" />
+                  <ScoreBar label="2. ETF/제도권 자금" score={coin.scores.etf} max={25} color="bg-purple-500" />
+                  <ScoreBar label="3. 온체인 핵심 지표" score={coin.scores.onchain} max={25} color="bg-green-500" />
+                  <ScoreBar label="4. AI/메타버스 트렌드" score={coin.scores.ai} max={20} color="bg-pink-500" />
+                  <ScoreBar label="5. 선물시장 분석" score={coin.scores.futures} max={20} color="bg-orange-500" />
+                  <ScoreBar label="6. 기술적 분석" score={coin.scores.technical} max={20} color="bg-cyan-500" />
+                  <ScoreBar label="7. 전략 점수" score={coin.scores.strategy} max={10} color="bg-yellow-500" />
+                </div>
+              ) : (
+                <div className="bg-white/5 rounded-xl p-6 text-center">
+                  <p className="text-white/50 mb-3">🔒 PRO 회원만 상세 분석을 볼 수 있습니다</p>
+                  <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">
+                    PRO 업그레이드
+                  </Link>
+                </div>
+              )}
             </div>
-          </div>
 
-          <div className="p-6 border-b border-white/10">
-            <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-              📊 7단계 체크리스트 분석
-              <span className="text-[#00d395] text-2xl font-bold">{coin.scores.total}/140</span>
-            </h3>
-            
-            {isPro ? (
-              <div className="space-y-3">
-                <ScoreBar label="1. 거시환경 (금리/달러/증시)" score={coin.scores.macro} max={20} color="bg-blue-500" />
-                <ScoreBar label="2. ETF/제도권 자금" score={coin.scores.etf} max={25} color="bg-purple-500" />
-                <ScoreBar label="3. 온체인 핵심 지표" score={coin.scores.onchain} max={25} color="bg-green-500" />
-                <ScoreBar label="4. AI/메타버스 트렌드" score={coin.scores.ai} max={20} color="bg-pink-500" />
-                <ScoreBar label="5. 선물시장 분석" score={coin.scores.futures} max={20} color="bg-orange-500" />
-                <ScoreBar label="6. 기술적 분석" score={coin.scores.technical} max={20} color="bg-cyan-500" />
-                <ScoreBar label="7. 전략 점수" score={coin.scores.strategy} max={10} color="bg-yellow-500" />
-              </div>
-            ) : (
-              <div className="bg-white/5 rounded-xl p-6 text-center">
-                <p className="text-white/50 mb-3">🔒 PRO 회원만 상세 분석을 볼 수 있습니다</p>
-                <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">
-                  PRO 업그레이드
-                </Link>
-              </div>
-            )}
-          </div>
+            {/* 매매 전략 */}
+            <div className="p-6 border-b border-white/10">
+              <h3 className="text-lg font-bold mb-4">💰 매매 전략</h3>
+              
+              {isPro ? (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-[#00d395]/10 border border-[#00d395]/30 rounded-xl p-4">
+                    <p className="text-white/50 text-sm mb-1">롱 진입가</p>
+                    <p className="text-[#00d395] text-xl font-bold">
+                      ${coin.entry_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                    </p>
+                  </div>
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                    <p className="text-white/50 text-sm mb-1">목표가</p>
+                    <p className="text-blue-400 text-xl font-bold">
+                      ${coin.target_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                    </p>
+                  </div>
+                  <div className="bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 rounded-xl p-4">
+                    <p className="text-white/50 text-sm mb-1">손절가</p>
+                    <p className="text-[#ff6b6b] text-xl font-bold">
+                      ${coin.stop_loss.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                    </p>
+                  </div>
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+                    <p className="text-white/50 text-sm mb-1">손익비</p>
+                    <p className="text-yellow-400 text-xl font-bold">{coin.risk_reward}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white/5 rounded-xl p-6 text-center">
+                  <p className="text-white/50">🔒 PRO 회원 전용</p>
+                </div>
+              )}
+            </div>
 
-          <div className="p-6 border-b border-white/10">
-            <h3 className="text-lg font-bold mb-4">💰 매매 전략</h3>
-            
-            {isPro ? (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#00d395]/10 border border-[#00d395]/30 rounded-xl p-4">
-                  <p className="text-white/50 text-sm mb-1">롱 진입가</p>
-                  <p className="text-[#00d395] text-xl font-bold">
-                    ${coin.entry_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                  </p>
+            {/* AI 코멘트 */}
+            <div className="p-6">
+              <h3 className="text-lg font-bold mb-4">🤖 AI 매매 코멘트</h3>
+              
+              {isPro ? (
+                <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4">
+                  <p className="text-white/90 leading-relaxed">{coin.ai_comment}</p>
                 </div>
-                <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
-                  <p className="text-white/50 text-sm mb-1">목표가</p>
-                  <p className="text-blue-400 text-xl font-bold">
-                    ${coin.target_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                  </p>
+              ) : (
+                <div className="bg-white/5 rounded-xl p-6 text-center">
+                  <p className="text-white/50 mb-3">🔒 AI 분석은 PRO 회원 전용입니다</p>
+                  <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">
+                    PRO 업그레이드
+                  </Link>
                 </div>
-                <div className="bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 rounded-xl p-4">
-                  <p className="text-white/50 text-sm mb-1">손절가</p>
-                  <p className="text-[#ff6b6b] text-xl font-bold">
-                    ${coin.stop_loss.toLocaleString(undefined, { maximumFractionDigits: 4 })}
-                  </p>
-                </div>
-                <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
-                  <p className="text-white/50 text-sm mb-1">손익비</p>
-                  <p className="text-yellow-400 text-xl font-bold">{coin.risk_reward}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-white/5 rounded-xl p-6 text-center">
-                <p className="text-white/50">🔒 PRO 회원 전용</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          <div className="p-6">
-            <h3 className="text-lg font-bold mb-4">🤖 AI 매매 코멘트</h3>
-            
-            {isPro ? (
-              <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4">
-                <p className="text-white/90 leading-relaxed">{coin.ai_comment}</p>
-              </div>
-            ) : (
-              <div className="bg-white/5 rounded-xl p-6 text-center">
-                <p className="text-white/50 mb-3">🔒 AI 분석은 PRO 회원 전용입니다</p>
-                <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">
-                  PRO 업그레이드
-                </Link>
-              </div>
-            )}
+            {/* 닫기 버튼 */}
+            <div className="p-4 border-t border-white/10">
+              <button 
+                onClick={onClose}
+                className="w-full py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold transition"
+              >
+                닫기
+              </button>
+            </div>
           </div>
         </div>
       </div>
