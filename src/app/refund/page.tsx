@@ -8,7 +8,7 @@ export default function Refund() {
       {/* 헤더 */}
       <header className="border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <Link href="/" className="text-xl font-bold">🚀 크립토 PRO</Link>
+          <Link href="/" className="text-xl font-bold">🧭 투자나침반</Link>
         </div>
       </header>
 
@@ -23,7 +23,7 @@ export default function Refund() {
           <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
             <h2 className="text-xl font-bold text-red-400 mb-4">⚠️ 환불 불가 안내</h2>
             <div className="space-y-3">
-              <p>크립토 PRO는 <strong>결제 즉시 모든 콘텐츠가 제공되는 디지털 교육 서비스</strong>입니다.</p>
+              <p>투자나침반는 <strong>결제 즉시 모든 콘텐츠가 제공되는 디지털 교육 서비스</strong>입니다.</p>
               <p>「전자상거래 등에서의 소비자보호에 관한 법률」 제17조 제2항에 따라, 결제 완료 즉시 콘텐츠가 제공되는 디지털 상품은 <strong>청약철회(환불)가 제한</strong>됩니다.</p>
               <p className="text-red-300 font-semibold">결제 완료 시점부터 환불이 불가능하오니, 결제 전 충분히 검토해 주시기 바랍니다.</p>
             </div>
@@ -43,7 +43,7 @@ export default function Refund() {
           <section>
             <h2 className="text-xl font-bold mb-4">제1조 (서비스의 성격)</h2>
             <ul className="list-disc list-inside space-y-2 ml-4">
-              <li>크립토 PRO는 암호화폐 시장 분석 정보를 제공하는 <strong>온라인 디지털 콘텐츠(교육 서비스)</strong>입니다.</li>
+              <li>투자나침반는 암호화폐 시장 분석 정보를 제공하는 <strong>온라인 디지털 콘텐츠(교육 서비스)</strong>입니다.</li>
               <li>본 서비스는 <strong>결제 완료 즉시</strong> 모든 유료 콘텐츠(7단계 분석, 진입가/목표가/손절가, AI 코멘트, 무제한 검색 등)에 접근할 수 있습니다.</li>
               <li>디지털 콘텐츠의 특성상, 결제와 동시에 서비스 이용이 시작되며 "미이용" 상태가 존재하지 않습니다.</li>
             </ul>
