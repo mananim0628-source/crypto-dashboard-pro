@@ -1,28 +1,99 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function SignUp() {
+function SignUpForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [nickname, setNickname] = useState('')
+  const [telegramId, setTelegramId] = useState('')
+  const [promoCode, setPromoCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [promoApplied, setPromoApplied] = useState<{discount: number, message: string} | null>(null)
   
+  // UTM 파라미터
+  const [utmData, setUtmData] = useState({
+    utm_source: '',
+    utm_medium: '',
+    utm_campaign: '',
+    utm_content: '',
+    utm_term: '',
+    ref: ''
+  })
+
   const router = useRouter()
   const searchParams = useSearchParams()
   const plan = searchParams.get('plan')
   
   const supabase = createClientComponentClient()
 
+  // UTM 파라미터 추출
+  useEffect(() => {
+    setUtmData({
+      utm_source: searchParams.get('utm_source') || '',
+      utm_medium: searchParams.get('utm_medium') || '',
+      utm_campaign: searchParams.get('utm_campaign') || '',
+      utm_content: searchParams.get('utm_content') || '',
+      utm_term: searchParams.get('utm_term') || '',
+      ref: searchParams.get('ref') || ''
+    })
+
+    // URL에 프로모션 코드가 있으면 자동 입력
+    const urlPromo = searchParams.get('promo') || searchParams.get('code')
+    if (urlPromo) {
+      setPromoCode(urlPromo)
+      validatePromoCode(urlPromo)
+    }
+  }, [searchParams])
+
+  // 프로모션 코드 검증
+  const validatePromoCode = async (code: string) => {
+    if (!code.trim()) {
+      setPromoApplied(null)
+      return
+    }
+
+    const promoCodes: Record<string, {discount: number, message: string}> = {
+      'WELCOME': { discount: 0, message: '🎁 7일 무료 체험 적용!' },
+      'TELEGRAM10': { discount: 10, message: '📱 텔레그램 유입 10% 할인!' },
+      'YOUTUBE20': { discount: 20, message: '🎬 유튜브 구독자 20% 할인!' },
+      'BLOG15': { discount: 15, message: '📝 블로그 독자 15% 할인!' },
+      'KAKAO10': { discount: 10, message: '💬 카카오톡 유입 10% 할인!' },
+      'VIP50': { discount: 50, message: '👑 VIP 특별 50% 할인!' },
+      'FRIEND20': { discount: 20, message: '👫 친구 추천 20% 할인!' },
+    }
+
+    const upperCode = code.toUpperCase()
+    if (promoCodes[upperCode]) {
+      setPromoApplied(promoCodes[upperCode])
+    } else {
+      setPromoApplied(null)
+    }
+  }
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
+
+    // 비밀번호 확인
+    if (password !== confirmPassword) {
+      setError('비밀번호가 일치하지 않습니다')
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('비밀번호는 최소 6자리 이상이어야 합니다')
+      setLoading(false)
+      return
+    }
 
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -31,6 +102,14 @@ export default function SignUp() {
         options: {
           data: {
             nickname: nickname || email.split('@')[0],
+            telegram_id: telegramId || null,
+            promo_code: promoCode.toUpperCase() || null,
+            utm_source: utmData.utm_source || null,
+            utm_medium: utmData.utm_medium || null,
+            utm_campaign: utmData.utm_campaign || null,
+            utm_content: utmData.utm_content || null,
+            utm_term: utmData.utm_term || null,
+            referral_code: utmData.ref || null,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
@@ -48,6 +127,10 @@ export default function SignUp() {
 
   const handleOAuthSignUp = async (provider: 'google' | 'kakao') => {
     try {
+      // UTM 데이터를 로컬 스토리지에 저장 (OAuth 후 복구용)
+      localStorage.setItem('signup_utm', JSON.stringify(utmData))
+      localStorage.setItem('signup_promo', promoCode)
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -71,6 +154,11 @@ export default function SignUp() {
             <br />
             인증 링크를 발송했습니다
           </p>
+          {promoApplied && (
+            <div className="bg-crypto-green/10 border border-crypto-green/30 rounded-xl p-3 mb-4">
+              <p className="text-crypto-green text-sm">{promoApplied.message}</p>
+            </div>
+          )}
           <p className="text-sm text-white/50 mb-6">
             이메일의 링크를 클릭하면 가입이 완료됩니다
           </p>
@@ -85,9 +173,23 @@ export default function SignUp() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="card max-w-md w-full">
-        <Link href="/" className="block text-center mb-8">
+        <Link href="/" className="block text-center mb-6">
           <span className="text-3xl font-bold gradient-text">🚀 크립토 PRO</span>
         </Link>
+
+        {/* UTM 소스 표시 */}
+        {utmData.utm_source && (
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-3 mb-4 text-center">
+            <p className="text-blue-400 text-sm">
+              {utmData.utm_source === 'telegram' && '📱 텔레그램에서 오셨군요!'}
+              {utmData.utm_source === 'youtube' && '🎬 유튜브에서 오셨군요!'}
+              {utmData.utm_source === 'instagram' && '📸 인스타그램에서 오셨군요!'}
+              {utmData.utm_source === 'blog' && '📝 블로그에서 오셨군요!'}
+              {utmData.utm_source === 'kakao' && '💬 카카오톡에서 오셨군요!'}
+              {!['telegram', 'youtube', 'instagram', 'blog', 'kakao'].includes(utmData.utm_source) && `${utmData.utm_source}에서 오셨군요!`}
+            </p>
+          </div>
+        )}
 
         {plan === 'pro' && (
           <div className="bg-crypto-green/10 border border-crypto-green/30 rounded-xl p-4 mb-6 text-center">
@@ -98,7 +200,8 @@ export default function SignUp() {
           </div>
         )}
 
-        <h1 className="text-2xl font-bold text-center mb-6">회원가입</h1>
+        <h1 className="text-2xl font-bold text-center mb-2">계정 생성</h1>
+        <p className="text-white/50 text-center mb-6">시작하려면 가입하세요</p>
 
         {error && (
           <div className="bg-crypto-red/10 border border-crypto-red/30 rounded-xl p-4 mb-6 text-crypto-red text-sm">
@@ -108,12 +211,12 @@ export default function SignUp() {
 
         <form onSubmit={handleSignUp} className="space-y-4">
           <div>
-            <label className="block text-sm text-white/70 mb-2">닉네임</label>
+            <label className="block text-sm text-white/70 mb-2">성명</label>
             <input
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              placeholder="닉네임 (선택)"
+              placeholder="닉네임"
               className="input-field"
             />
           </div>
@@ -143,6 +246,51 @@ export default function SignUp() {
             />
           </div>
 
+          <div>
+            <label className="block text-sm text-white/70 mb-2">비밀번호 확인 *</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="비밀번호 재입력"
+              className="input-field"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm text-white/70 mb-2">
+              텔레그램 ID <span className="text-white/30">(선택)</span>
+            </label>
+            <input
+              type="text"
+              value={telegramId}
+              onChange={(e) => setTelegramId(e.target.value)}
+              placeholder="@username"
+              className="input-field"
+            />
+            <p className="text-xs text-white/30 mt-1">기존 텔레그램 구독자는 입력하시면 혜택 적용</p>
+          </div>
+
+          <div>
+            <label className="block text-sm text-white/70 mb-2">
+              프로모션 코드 <span className="text-white/30">(선택)</span>
+            </label>
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e) => {
+                setPromoCode(e.target.value)
+                validatePromoCode(e.target.value)
+              }}
+              placeholder="할인 코드 입력"
+              className="input-field"
+            />
+            {promoApplied && (
+              <p className="text-crypto-green text-sm mt-2">{promoApplied.message}</p>
+            )}
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -151,10 +299,10 @@ export default function SignUp() {
             {loading ? (
               <span className="flex items-center justify-center gap-2">
                 <span className="spinner w-5 h-5"></span>
-                처리 중...
+                계정 생성 중...
               </span>
             ) : (
-              '회원가입'
+              '계정 생성'
             )}
           </button>
         </form>
@@ -186,10 +334,22 @@ export default function SignUp() {
         <p className="text-center text-white/50 text-sm mt-6">
           이미 계정이 있으신가요?{' '}
           <Link href="/login" className="text-crypto-green hover:underline">
-            로그인
+            로그인하세요
           </Link>
         </p>
       </div>
     </div>
+  )
+}
+
+export default function SignUp() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="spinner w-12 h-12"></div>
+      </div>
+    }>
+      <SignUpForm />
+    </Suspense>
   )
 }
