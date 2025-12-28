@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -62,6 +62,7 @@ export default function Dashboard() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
   const [countdown, setCountdown] = useState(120)
+  const countdownRef = useRef<HTMLSpanElement>(null)
   const [selectedCoin, setSelectedCoin] = useState<AnalyzedCoin | null>(null)
   const [showDetail, setShowDetail] = useState(false)
 
@@ -249,13 +250,26 @@ export default function Dashboard() {
     }
   }, [profile])
 
-  // 카운트다운
+  // 카운트다운 (모달 열려있으면 DOM만 업데이트, 리렌더링 방지)
   useEffect(() => {
+    let count = countdown
     const timer = setInterval(() => {
-      setCountdown(prev => (prev > 0 ? prev - 1 : 120))
+      count = count > 0 ? count - 1 : 120
+      
+      // 모달이 열려있으면 DOM만 직접 업데이트 (리렌더링 방지)
+      if (showDetail && countdownRef.current) {
+        countdownRef.current.textContent = `${count}초`
+      } else {
+        setCountdown(count)
+      }
+      
+      // 0이 되면 데이터 갱신
+      if (count === 120) {
+        setCountdown(120)
+      }
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [showDetail])
 
   // 시그널 뱃지 컴포넌트
   const SignalBadge = ({ signal }: { signal: string }) => {
@@ -521,7 +535,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-4">
               <div className="text-sm text-white/50">
                 업데이트: {lastUpdate.toLocaleTimeString('ko-KR')} | 
-                <span className="text-crypto-green ml-1">{countdown}초</span>
+                <span ref={countdownRef} className="text-crypto-green ml-1">{countdown}초</span>
               </div>
               <span className="text-white/70">{profile?.nickname || user?.email?.split('@')[0]}</span>
               <Link href="/pricing" className="text-sm text-crypto-green hover:underline">요금제</Link>
