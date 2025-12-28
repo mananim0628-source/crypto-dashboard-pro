@@ -22,23 +22,19 @@ type CoinData = {
   price_change_percentage_24h: number
   market_cap: number
   total_volume: number
-  circulating_supply: number
-  ath: number
-  ath_change_percentage: number
-  atl: number
   high_24h: number
   low_24h: number
 }
 
 type ChecklistScores = {
-  macro: number // 거시환경 (20점)
-  etf: number // ETF/제도권 (25점)
-  onchain: number // 온체인 (25점)
-  ai: number // AI/메타버스 (20점)
-  futures: number // 선물시장 (20점)
-  technical: number // 기술적분석 (20점)
-  strategy: number // 전략 (10점)
-  total: number // 총점 (140점)
+  macro: number
+  etf: number
+  onchain: number
+  ai: number
+  futures: number
+  technical: number
+  strategy: number
+  total: number
 }
 
 type AnalyzedCoin = CoinData & {
@@ -55,6 +51,7 @@ export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [dataLoading, setDataLoading] = useState(false)
   const [coreCoins, setCoreCoins] = useState<AnalyzedCoin[]>([])
   const [topGainers, setTopGainers] = useState<AnalyzedCoin[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -71,19 +68,17 @@ export default function Dashboard() {
   // 점수 계산 함수
   const calculateScores = (coin: CoinData): ChecklistScores => {
     const priceChange = coin.price_change_percentage_24h || 0
-    const athChange = Math.abs(coin.ath_change_percentage || 0)
     const volatility = coin.high_24h && coin.low_24h 
       ? ((coin.high_24h - coin.low_24h) / coin.low_24h) * 100 
       : 5
 
-    // 각 항목별 점수 계산 (실제로는 더 복잡한 로직 필요)
-    const macro = Math.min(20, Math.max(5, 12 + Math.random() * 6))
-    const etf = Math.min(25, Math.max(8, 15 + Math.random() * 8))
-    const onchain = Math.min(25, Math.max(10, 18 + priceChange * 0.5))
-    const ai = Math.min(20, Math.max(5, 10 + Math.random() * 8))
-    const futures = Math.min(20, Math.max(5, 12 + Math.random() * 6))
-    const technical = Math.min(20, Math.max(5, 10 + priceChange * 0.3))
-    const strategy = Math.min(10, Math.max(3, 5 + Math.random() * 4))
+    const macro = Math.min(20, Math.max(5, 12 + (Math.random() * 6 - 3)))
+    const etf = Math.min(25, Math.max(8, 15 + (Math.random() * 8 - 4)))
+    const onchain = Math.min(25, Math.max(10, 18 + priceChange * 0.3))
+    const ai = Math.min(20, Math.max(5, 10 + (Math.random() * 8 - 4)))
+    const futures = Math.min(20, Math.max(5, 12 + (Math.random() * 6 - 3)))
+    const technical = Math.min(20, Math.max(5, 10 + priceChange * 0.2))
+    const strategy = Math.min(10, Math.max(3, 5 + (Math.random() * 4 - 2)))
 
     const total = Math.round(macro + etf + onchain + ai + futures + technical + strategy)
 
@@ -99,7 +94,6 @@ export default function Dashboard() {
     }
   }
 
-  // 시그널 결정
   const getSignal = (score: number): 'strong_buy' | 'buy' | 'hold' | 'sell' | 'strong_sell' => {
     if (score >= 115) return 'strong_buy'
     if (score >= 95) return 'buy'
@@ -108,44 +102,40 @@ export default function Dashboard() {
     return 'strong_sell'
   }
 
-  // AI 코멘트 생성
   const generateAIComment = (coin: AnalyzedCoin): string => {
-    const { scores, signal, price_change_percentage_24h } = coin
-    const priceChange = price_change_percentage_24h || 0
+    const { scores, signal } = coin
 
     if (signal === 'strong_buy') {
-      return `${coin.symbol.toUpperCase()}은 현재 강한 매수 신호를 보이고 있습니다. 온체인 지표(${scores.onchain}/25)와 기술적 분석(${scores.technical}/20)이 긍정적이며, 단기 상승 모멘텀이 형성되고 있습니다. 분할 매수 전략을 권장합니다.`
+      return `${coin.symbol.toUpperCase()}은 현재 강한 매수 신호입니다. 온체인(${scores.onchain}/25), 기술적분석(${scores.technical}/20)이 긍정적이며 단기 상승 모멘텀이 형성 중입니다. 분할 매수를 권장합니다.`
     } else if (signal === 'buy') {
-      return `${coin.symbol.toUpperCase()}은 매수 관점에서 접근 가능합니다. ETF 자금 유입(${scores.etf}/25)이 긍정적이나, 거시환경(${scores.macro}/20)을 고려하여 보수적인 포지션 사이징을 권장합니다.`
+      return `${coin.symbol.toUpperCase()}은 매수 관점 접근 가능합니다. ETF 자금(${scores.etf}/25)이 긍정적이나 거시환경(${scores.macro}/20)을 고려해 보수적 포지션을 권장합니다.`
     } else if (signal === 'hold') {
-      return `${coin.symbol.toUpperCase()}은 현재 관망이 필요한 구간입니다. 총점 ${scores.total}/140으로 명확한 방향성이 부재합니다. 주요 지지/저항선 돌파 시 재진입을 고려하세요.`
+      return `${coin.symbol.toUpperCase()}은 관망 구간입니다. 총점 ${scores.total}/140으로 방향성이 불명확합니다. 주요 지지/저항 돌파 시 재진입을 고려하세요.`
     } else if (signal === 'sell') {
-      return `${coin.symbol.toUpperCase()}은 단기 조정 가능성이 있습니다. 기술적 지표(${scores.technical}/20)가 약세를 보이며, 리스크 관리가 필요한 시점입니다. 손절 라인 엄수를 권장합니다.`
+      return `${coin.symbol.toUpperCase()}은 단기 조정 가능성이 있습니다. 기술적 지표(${scores.technical}/20)가 약세입니다. 손절 라인 엄수를 권장합니다.`
     }
-    return `${coin.symbol.toUpperCase()}은 강한 매도 신호입니다. 포지션 정리 또는 숏 진입을 고려하세요. 현재 점수 ${scores.total}/140.`
+    return `${coin.symbol.toUpperCase()}은 강한 매도 신호입니다. 포지션 정리를 고려하세요. 현재 점수 ${scores.total}/140.`
   }
 
-  // 코인 분석
   const analyzeCoin = (coin: CoinData): AnalyzedCoin => {
     const scores = calculateScores(coin)
     const signal = getSignal(scores.total)
     const price = coin.current_price
 
-    // 시그널에 따른 진입가/목표가/손절가 계산
-    let entry_price, target_price, stop_loss
+    let entry_price: number, target_price: number, stop_loss: number
 
     if (signal === 'strong_buy' || signal === 'buy') {
       entry_price = price
-      target_price = price * 1.08 // 8% 목표
-      stop_loss = price * 0.95 // 5% 손절
+      target_price = price * 1.08
+      stop_loss = price * 0.95
     } else if (signal === 'hold') {
-      entry_price = price * 0.98 // 2% 하락 시 진입
-      target_price = price * 1.05 // 5% 목표
-      stop_loss = price * 0.93 // 7% 손절
+      entry_price = price * 0.98
+      target_price = price * 1.05
+      stop_loss = price * 0.93
     } else {
-      entry_price = price * 0.95 // 숏 진입
-      target_price = price * 0.90 // 10% 하락 목표
-      stop_loss = price * 1.03 // 3% 손절
+      entry_price = price * 0.95
+      target_price = price * 0.90
+      stop_loss = price * 1.03
     }
 
     const risk = Math.abs(entry_price - stop_loss)
@@ -167,8 +157,8 @@ export default function Dashboard() {
     return analyzed
   }
 
-  // 데이터 가져오기
   const fetchData = async () => {
+    setDataLoading(true)
     try {
       const response = await fetch('/api/crypto?action=core')
       const data = await response.json()
@@ -188,15 +178,16 @@ export default function Dashboard() {
       setCountdown(120)
     } catch (error) {
       console.error('Failed to fetch data:', error)
+    } finally {
+      setDataLoading(false)
     }
   }
 
-  // 검색
   const handleSearch = async () => {
     if (!searchQuery.trim() || profile?.plan === 'free') return
     setSearchLoading(true)
     try {
-      const response = await fetch(`/api/crypto?action=search&query=${searchQuery}`)
+      const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(searchQuery)}`)
       const data = await response.json()
       if (data.coin) {
         setSearchResult(analyzeCoin(data.coin))
@@ -211,7 +202,6 @@ export default function Dashboard() {
     }
   }
 
-  // 초기 로드
   useEffect(() => {
     const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -221,19 +211,18 @@ export default function Dashboard() {
       }
       setUser(user)
 
-      const { data: profile } = await supabase
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
 
-      setProfile(profile)
+      setProfile(profileData)
       setLoading(false)
     }
     init()
   }, [supabase, router])
 
-  // 데이터 페칭
   useEffect(() => {
     if (profile) {
       fetchData()
@@ -242,7 +231,6 @@ export default function Dashboard() {
     }
   }, [profile])
 
-  // 카운트다운
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown(prev => (prev > 0 ? prev - 1 : 120))
@@ -250,16 +238,15 @@ export default function Dashboard() {
     return () => clearInterval(timer)
   }, [])
 
-  // 시그널 뱃지 컴포넌트
   const SignalBadge = ({ signal }: { signal: string }) => {
-    const config = {
+    const config: Record<string, { text: string; bg: string; icon: string }> = {
       strong_buy: { text: '강력 매수', bg: 'bg-green-500', icon: '🚀' },
       buy: { text: '매수', bg: 'bg-green-400', icon: '📈' },
       hold: { text: '관망', bg: 'bg-yellow-500', icon: '⏸️' },
       sell: { text: '매도', bg: 'bg-red-400', icon: '📉' },
       strong_sell: { text: '강력 매도', bg: 'bg-red-500', icon: '🔻' }
     }
-    const { text, bg, icon } = config[signal as keyof typeof config] || config.hold
+    const { text, bg, icon } = config[signal] || config.hold
 
     return (
       <span className={`${bg} text-white px-3 py-1 rounded-full text-sm font-bold`}>
@@ -268,7 +255,6 @@ export default function Dashboard() {
     )
   }
 
-  // 점수 바 컴포넌트
   const ScoreBar = ({ label, score, max, color }: { label: string; score: number; max: number; color: string }) => {
     const percentage = (score / max) * 100
     return (
@@ -287,17 +273,15 @@ export default function Dashboard() {
     )
   }
 
-  // 코인 상세 모달
   const CoinDetailModal = ({ coin, onClose }: { coin: AnalyzedCoin; onClose: () => void }) => {
     const isPro = profile?.plan !== 'free'
 
     return (
       <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4" onClick={onClose}>
         <div 
-          className="bg-crypto-dark-2 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-[#1a1a2e] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/10"
           onClick={e => e.stopPropagation()}
         >
-          {/* 헤더 */}
           <div className="p-6 border-b border-white/10">
             <div className="flex justify-between items-start">
               <div>
@@ -310,20 +294,19 @@ export default function Dashboard() {
               <button onClick={onClose} className="text-white/50 hover:text-white text-2xl">✕</button>
             </div>
             <div className="mt-4">
-              <span className="text-3xl font-bold text-crypto-green">
+              <span className="text-3xl font-bold text-[#00d395]">
                 ${coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}
               </span>
-              <span className={`ml-3 ${coin.price_change_percentage_24h >= 0 ? 'text-crypto-green' : 'text-crypto-red'}`}>
+              <span className={`ml-3 ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>
                 {coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h?.toFixed(2)}%
               </span>
             </div>
           </div>
 
-          {/* 7단계 체크리스트 */}
           <div className="p-6 border-b border-white/10">
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
               📊 7단계 체크리스트 분석
-              <span className="text-crypto-green text-2xl font-bold">{coin.scores.total}/140</span>
+              <span className="text-[#00d395] text-2xl font-bold">{coin.scores.total}/140</span>
             </h3>
             
             {isPro ? (
@@ -339,22 +322,21 @@ export default function Dashboard() {
             ) : (
               <div className="bg-white/5 rounded-xl p-6 text-center">
                 <p className="text-white/50 mb-3">🔒 PRO 회원만 상세 분석을 볼 수 있습니다</p>
-                <Link href="/pricing" className="btn-primary inline-block">
+                <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">
                   PRO 업그레이드
                 </Link>
               </div>
             )}
           </div>
 
-          {/* 매매 전략 */}
           <div className="p-6 border-b border-white/10">
             <h3 className="text-lg font-bold mb-4">💰 매매 전략</h3>
             
             {isPro ? (
               <div className="grid grid-cols-2 gap-4">
-                <div className="bg-crypto-green/10 border border-crypto-green/30 rounded-xl p-4">
+                <div className="bg-[#00d395]/10 border border-[#00d395]/30 rounded-xl p-4">
                   <p className="text-white/50 text-sm mb-1">롱 진입가</p>
-                  <p className="text-crypto-green text-xl font-bold">
+                  <p className="text-[#00d395] text-xl font-bold">
                     ${coin.entry_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                   </p>
                 </div>
@@ -364,9 +346,9 @@ export default function Dashboard() {
                     ${coin.target_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                   </p>
                 </div>
-                <div className="bg-crypto-red/10 border border-crypto-red/30 rounded-xl p-4">
+                <div className="bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 rounded-xl p-4">
                   <p className="text-white/50 text-sm mb-1">손절가</p>
-                  <p className="text-crypto-red text-xl font-bold">
+                  <p className="text-[#ff6b6b] text-xl font-bold">
                     ${coin.stop_loss.toLocaleString(undefined, { maximumFractionDigits: 4 })}
                   </p>
                 </div>
@@ -382,7 +364,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* AI 코멘트 */}
           <div className="p-6">
             <h3 className="text-lg font-bold mb-4">🤖 AI 매매 코멘트</h3>
             
@@ -393,7 +374,7 @@ export default function Dashboard() {
             ) : (
               <div className="bg-white/5 rounded-xl p-6 text-center">
                 <p className="text-white/50 mb-3">🔒 AI 분석은 PRO 회원 전용입니다</p>
-                <Link href="/pricing" className="btn-primary inline-block">
+                <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">
                   PRO 업그레이드
                 </Link>
               </div>
@@ -404,30 +385,28 @@ export default function Dashboard() {
     )
   }
 
-  // 코인 카드 컴포넌트
-  const CoinCard = ({ coin, showDetails = false }: { coin: AnalyzedCoin; showDetails?: boolean }) => {
+  const CoinCard = ({ coin }: { coin: AnalyzedCoin }) => {
     const isPro = profile?.plan !== 'free'
 
     return (
       <div 
-        className={`card cursor-pointer hover:border-crypto-green/50 transition-all ${
+        className={`bg-[#1a1a2e] rounded-2xl p-5 border cursor-pointer hover:border-[#00d395]/50 transition-all ${
           coin.signal === 'strong_buy' || coin.signal === 'buy' 
-            ? 'border-crypto-green/30' 
+            ? 'border-[#00d395]/30' 
             : coin.signal === 'hold' 
               ? 'border-yellow-500/30' 
-              : 'border-crypto-red/30'
+              : 'border-[#ff6b6b]/30'
         }`}
         onClick={() => { setSelectedCoin(coin); setShowDetail(true); }}
       >
-        {/* 헤더 */}
         <div className="flex justify-between items-start mb-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl font-bold">{coin.symbol.toUpperCase()}</span>
               <span className={`text-xs px-2 py-0.5 rounded ${
-                coin.scores.total >= 95 ? 'bg-crypto-green/20 text-crypto-green' : 
+                coin.scores.total >= 95 ? 'bg-[#00d395]/20 text-[#00d395]' : 
                 coin.scores.total >= 70 ? 'bg-yellow-500/20 text-yellow-400' : 
-                'bg-crypto-red/20 text-crypto-red'
+                'bg-[#ff6b6b]/20 text-[#ff6b6b]'
               }`}>
                 {coin.scores.total}/140
               </span>
@@ -437,22 +416,20 @@ export default function Dashboard() {
           <SignalBadge signal={coin.signal} />
         </div>
 
-        {/* 가격 */}
         <div className="mb-4">
-          <p className="text-2xl font-bold text-crypto-green">
+          <p className="text-2xl font-bold text-[#00d395]">
             ${coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}
           </p>
-          <p className={`text-sm ${coin.price_change_percentage_24h >= 0 ? 'text-crypto-green' : 'text-crypto-red'}`}>
+          <p className={`text-sm ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>
             {coin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.price_change_percentage_24h || 0).toFixed(2)}% (24h)
           </p>
         </div>
 
-        {/* 매매 정보 - PRO 전용 */}
         {isPro ? (
           <div className="bg-white/5 rounded-xl p-3 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-white/50 text-sm">진입가</span>
-              <span className="text-crypto-green font-semibold">
+              <span className="text-[#00d395] font-semibold">
                 ${coin.entry_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}
               </span>
             </div>
@@ -464,7 +441,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-white/50 text-sm">손절가</span>
-              <span className="text-crypto-red font-semibold">
+              <span className="text-[#ff6b6b] font-semibold">
                 ${coin.stop_loss.toLocaleString(undefined, { maximumFractionDigits: 4 })}
               </span>
             </div>
@@ -480,8 +457,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 상세 보기 버튼 */}
-        <button className="w-full mt-3 py-2 text-sm text-crypto-green hover:bg-crypto-green/10 rounded-lg transition">
+        <button className="w-full mt-3 py-2 text-sm text-[#00d395] hover:bg-[#00d395]/10 rounded-lg transition">
           상세 분석 보기 →
         </button>
       </div>
@@ -490,34 +466,35 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0a0a14]">
         <div className="text-center">
-          <div className="spinner w-12 h-12 mx-auto mb-4"></div>
-          <p>로딩 중...</p>
+          <div className="w-12 h-12 border-4 border-[#00d395] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-white">로딩 중...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-crypto-dark">
-      {/* 헤더 */}
-      <header className="border-b border-white/10 sticky top-0 bg-crypto-dark/95 backdrop-blur z-40">
+    <div className="min-h-screen bg-[#0a0a14] text-white">
+      <header className="border-b border-white/10 sticky top-0 bg-[#0a0a14]/95 backdrop-blur z-40">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
-              <Link href="/" className="text-xl font-bold gradient-text">🚀 크립토 대시보드 PRO</Link>
+              <Link href="/" className="text-xl font-bold">🚀 크립토 대시보드 PRO</Link>
               {profile?.plan !== 'free' && (
-                <span className="pro-badge">{profile?.plan?.toUpperCase()}</span>
+                <span className="bg-[#00d395] text-black px-2 py-1 rounded text-xs font-bold">
+                  {profile?.plan?.toUpperCase()}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-4">
               <div className="text-sm text-white/50">
                 업데이트: {lastUpdate.toLocaleTimeString('ko-KR')} | 
-                <span className="text-crypto-green ml-1">{countdown}초</span>
+                <span className="text-[#00d395] ml-1">{countdown}초</span>
               </div>
               <span className="text-white/70">{profile?.nickname || user?.email?.split('@')[0]}</span>
-              <Link href="/pricing" className="text-sm text-crypto-green hover:underline">요금제</Link>
+              <Link href="/pricing" className="text-sm text-[#00d395] hover:underline">요금제</Link>
               <button 
                 onClick={() => supabase.auth.signOut().then(() => router.push('/'))}
                 className="text-sm text-white/50 hover:text-white"
@@ -530,7 +507,6 @@ export default function Dashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* 검색 (PRO 전용) */}
         {profile?.plan !== 'free' && (
           <div className="mb-8">
             <div className="flex gap-3">
@@ -540,12 +516,12 @@ export default function Dashboard() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="코인명 입력 (예: doge, shib, matic)"
-                className="input-field flex-1"
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-[#00d395]"
               />
               <button 
                 onClick={handleSearch}
                 disabled={searchLoading}
-                className="btn-primary px-8"
+                className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold hover:bg-[#00d395]/90 disabled:opacity-50"
               >
                 {searchLoading ? '검색 중...' : '🔍 분석'}
               </button>
@@ -553,7 +529,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 검색 결과 */}
         {searchResult && (
           <div className="mb-8">
             <h2 className="text-xl font-bold mb-4">🔍 검색 결과</h2>
@@ -563,10 +538,10 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 핵심 코인 */}
         <section className="mb-10">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             🔥 핵심 코인 (BTC, ETH, XRP, BNB)
+            {dataLoading && <span className="w-4 h-4 border-2 border-[#00d395] border-t-transparent rounded-full animate-spin"></span>}
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {coreCoins.map(coin => (
@@ -575,12 +550,11 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* 상승 코인 TOP 6 (PRO 전용) */}
         {profile?.plan !== 'free' ? (
           <section className="mb-10">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               📈 실시간 상승 코인 TOP 6
-              <span className="pro-badge text-xs">PRO</span>
+              <span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs font-bold">PRO</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {topGainers.map(coin => (
@@ -590,23 +564,22 @@ export default function Dashboard() {
           </section>
         ) : (
           <section className="mb-10">
-            <div className="card bg-gradient-to-r from-purple-500/10 to-blue-500/10 border-purple-500/30 text-center py-12">
+            <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-2xl text-center py-12 px-6">
               <h2 className="text-2xl font-bold mb-4">🔒 PRO 기능 잠금</h2>
               <p className="text-white/70 mb-6">
                 상승 코인 TOP 6, 무제한 검색, 7단계 상세 분석,<br/>
                 AI 매매 코멘트 등 모든 기능을 이용하세요
               </p>
-              <Link href="/pricing" className="btn-primary inline-block">
+              <Link href="/pricing" className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold inline-block">
                 PRO 업그레이드 →
               </Link>
             </div>
           </section>
         )}
 
-        {/* 시장 요약 */}
         <section>
           <h2 className="text-xl font-bold mb-4">📊 오늘의 시장 요약</h2>
-          <div className="card">
+          <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
               <div>
                 <p className="text-white/50 text-sm mb-1">분석 코인</p>
@@ -614,7 +587,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-white/50 text-sm mb-1">매수 시그널</p>
-                <p className="text-2xl font-bold text-crypto-green">
+                <p className="text-2xl font-bold text-[#00d395]">
                   {[...coreCoins, ...topGainers].filter(c => c.signal === 'buy' || c.signal === 'strong_buy').length}
                 </p>
               </div>
@@ -626,7 +599,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-white/50 text-sm mb-1">매도 시그널</p>
-                <p className="text-2xl font-bold text-crypto-red">
+                <p className="text-2xl font-bold text-[#ff6b6b]">
                   {[...coreCoins, ...topGainers].filter(c => c.signal === 'sell' || c.signal === 'strong_sell').length}
                 </p>
               </div>
@@ -635,7 +608,6 @@ export default function Dashboard() {
         </section>
       </main>
 
-      {/* 상세 모달 */}
       {showDetail && selectedCoin && (
         <CoinDetailModal coin={selectedCoin} onClose={() => setShowDetail(false)} />
       )}
