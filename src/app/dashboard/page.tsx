@@ -238,7 +238,7 @@ export default function Dashboard() {
 
   const SignalBadge = ({ signal, size = 'normal' }: { signal: string; size?: 'normal' | 'small' }) => {
     const config: Record<string, { text: string; bg: string; icon: string }> = {
-      strong_buy: { text: '강력매수', bg: 'bg-green-500', icon: '🚀' },
+      strong_buy: { text: '강력매수', bg: 'bg-green-500', icon: '🧭' },
       buy: { text: '매수', bg: 'bg-green-400', icon: '📈' },
       hold: { text: '관망', bg: 'bg-yellow-500', icon: '⏸️' },
       sell: { text: '매도', bg: 'bg-red-400', icon: '📉' },
@@ -336,7 +336,7 @@ export default function Dashboard() {
           {/* 모바일 헤더 */}
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-2">
-              <Link href="/" className="text-lg sm:text-xl font-bold whitespace-nowrap">🚀 크립토 PRO</Link>
+              <Link href="/" className="text-lg sm:text-xl font-bold whitespace-nowrap">🧭 투자나침반</Link>
               {profile?.plan !== 'free' && <span className="bg-[#00d395] text-black px-1.5 py-0.5 rounded text-xs font-bold">{profile?.plan?.toUpperCase()}</span>}
             </div>
             
