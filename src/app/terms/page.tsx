@@ -8,7 +8,7 @@ export default function Terms() {
       {/* 헤더 */}
       <header className="border-b border-white/10">
         <div className="max-w-4xl mx-auto px-4 py-4">
-          <Link href="/" className="text-xl font-bold">🚀 크립토 PRO</Link>
+          <Link href="/" className="text-xl font-bold">🧭 투자나침반</Link>
         </div>
       </header>
 
@@ -23,17 +23,17 @@ export default function Terms() {
           <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6">
             <h2 className="text-xl font-bold text-yellow-400 mb-4">⚠️ 중요 면책조항</h2>
             <div className="space-y-3 text-yellow-200/90">
-              <p><strong>1. 본 서비스는 투자 조언이 아닙니다.</strong> 크립토 PRO에서 제공하는 모든 정보, 분석, 점수, 시그널은 교육 및 참고 목적의 보조 도구일 뿐이며, 특정 자산의 매수, 매도, 보유를 권유하거나 추천하는 것이 아닙니다.</p>
-              <p><strong>2. 모든 투자 결정은 사용자 본인의 책임입니다.</strong> 본 서비스의 정보를 참고하여 내린 투자 결정으로 인한 손실에 대해 크립토 PRO는 어떠한 법적 책임도 지지 않습니다.</p>
+              <p><strong>1. 본 서비스는 투자 조언이 아닙니다.</strong> 투자나침반에서 제공하는 모든 정보, 분석, 점수, 시그널은 교육 및 참고 목적의 보조 도구일 뿐이며, 특정 자산의 매수, 매도, 보유를 권유하거나 추천하는 것이 아닙니다.</p>
+              <p><strong>2. 모든 투자 결정은 사용자 본인의 책임입니다.</strong> 본 서비스의 정보를 참고하여 내린 투자 결정으로 인한 손실에 대해 투자나침반는 어떠한 법적 책임도 지지 않습니다.</p>
               <p><strong>3. 과거 성과는 미래 수익을 보장하지 않습니다.</strong> 암호화폐 시장은 높은 변동성을 가지며, 원금 손실의 위험이 있습니다.</p>
-              <p><strong>4. 본 서비스는 금융투자업 등록 업체가 아닙니다.</strong> 크립토 PRO는 투자자문업, 투자일임업, 집합투자업 등 금융투자업에 해당하지 않는 정보 제공 서비스입니다.</p>
+              <p><strong>4. 본 서비스는 금융투자업 등록 업체가 아닙니다.</strong> 투자나침반는 투자자문업, 투자일임업, 집합투자업 등 금융투자업에 해당하지 않는 정보 제공 서비스입니다.</p>
             </div>
           </div>
 
           {/* 제1조 */}
           <section>
             <h2 className="text-xl font-bold mb-4">제1조 (목적)</h2>
-            <p>본 약관은 크립토 PRO(이하 "회사")가 제공하는 암호화폐 시장 분석 정보 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
+            <p>본 약관은 투자나침반(이하 "회사")가 제공하는 암호화폐 시장 분석 정보 서비스(이하 "서비스")의 이용과 관련하여 회사와 이용자 간의 권리, 의무 및 책임사항, 기타 필요한 사항을 규정함을 목적으로 합니다.</p>
           </section>
 
           {/* 제2조 */}
