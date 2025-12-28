@@ -1,224 +1,241 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 export default function Home() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return null
-  }
+  const [showMobileMenu, setShowMobileMenu] = useState(false)
 
   return (
-    <div className="min-h-screen">
-      {/* 네비게이션 */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-crypto-dark/80 backdrop-blur-lg border-b border-white/10">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold gradient-text">
-            🚀 크립토 PRO
-          </Link>
-          <div className="flex gap-4">
-            <Link href="/login" className="btn-secondary text-sm">
-              로그인
+    <div className="min-h-screen bg-[#0a0a14] text-white">
+      {/* 헤더 - 모바일 최적화 */}
+      <header className="border-b border-white/10">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            {/* 로고 */}
+            <Link href="/" className="text-xl font-bold whitespace-nowrap">
+              🚀 크립토 PRO
             </Link>
-            <Link href="/signup" className="btn-primary text-sm">
-              무료 시작하기
-            </Link>
+            
+            {/* 데스크톱 메뉴 */}
+            <div className="hidden sm:flex items-center gap-3">
+              <Link 
+                href="/login" 
+                className="px-4 py-2 border border-white/20 rounded-lg hover:bg-white/10 transition text-sm"
+              >
+                로그인
+              </Link>
+              <Link 
+                href="/signup" 
+                className="px-4 py-2 bg-[#00d395] text-black rounded-lg hover:bg-[#00d395]/90 transition font-semibold text-sm"
+              >
+                무료 시작하기
+              </Link>
+            </div>
+
+            {/* 모바일 메뉴 버튼 */}
+            <button 
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="sm:hidden p-2 hover:bg-white/10 rounded-lg"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
+
+          {/* 모바일 드롭다운 메뉴 */}
+          {showMobileMenu && (
+            <div className="sm:hidden mt-4 pt-4 border-t border-white/10 flex gap-2">
+              <Link 
+                href="/login" 
+                className="flex-1 text-center py-2.5 border border-white/20 rounded-lg hover:bg-white/10 transition text-sm"
+              >
+                로그인
+              </Link>
+              <Link 
+                href="/signup" 
+                className="flex-1 text-center py-2.5 bg-[#00d395] text-black rounded-lg hover:bg-[#00d395]/90 transition font-semibold text-sm"
+              >
+                무료 시작
+              </Link>
+            </div>
+          )}
         </div>
-      </nav>
+      </header>
 
       {/* 히어로 섹션 */}
-      <section className="pt-32 pb-20 px-4">
-        <div className="max-w-7xl mx-auto text-center">
-          <div className="inline-block px-4 py-2 bg-crypto-green/10 border border-crypto-green/30 rounded-full text-crypto-green text-sm mb-6">
+      <section className="py-16 sm:py-24 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="inline-block px-4 py-2 bg-[#00d395]/10 border border-[#00d395]/30 rounded-full text-[#00d395] text-sm mb-6">
             ✨ AI 기반 실시간 분석
           </div>
           
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">
-            <span className="gradient-text">7단계 체크리스트</span>로
-            <br />
-            암호화폐 매매 타이밍을 잡으세요
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 leading-tight">
+            <span className="text-[#00d395]">7단계 체크리스트</span>로<br/>
+            암호화폐 매매 타이밍을<br className="sm:hidden"/>
+            잡으세요
           </h1>
           
-          <p className="text-xl text-white/70 max-w-2xl mx-auto mb-10">
-            거시경제, ETF 자금흐름, 온체인 데이터, 기술적 분석까지
-            <br />
+          <p className="text-base sm:text-lg text-white/70 mb-8 leading-relaxed px-2">
+            거시경제, ETF 자금흐름, 온체인 데이터, 기술적 분석까지<br className="hidden sm:block"/>
             140점 만점 체크리스트로 최적의 진입 시점을 알려드립니다
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup" className="btn-primary text-lg px-8 py-4">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+            <Link 
+              href="/signup" 
+              className="w-full sm:w-auto px-8 py-4 bg-[#00d395] text-black rounded-xl font-semibold hover:bg-[#00d395]/90 transition text-base"
+            >
               🚀 무료로 시작하기
             </Link>
-            <Link href="/dashboard" className="btn-secondary text-lg px-8 py-4">
+            <Link 
+              href="/demo" 
+              className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/20 rounded-xl hover:bg-white/10 transition text-base"
+            >
               📊 데모 보기
             </Link>
           </div>
         </div>
       </section>
 
-      {/* 기능 섹션 */}
-      <section className="py-20 px-4 bg-crypto-dark-2/50">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            <span className="gradient-text">무료 vs PRO</span> 비교
+      {/* 특징 섹션 */}
+      <section className="py-16 px-4 border-t border-white/10">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">
+            왜 <span className="text-[#00d395]">크립토 PRO</span>인가요?
           </h2>
           
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* 무료 플랜 */}
-            <div className="card">
-              <div className="text-center mb-6">
-                <h3 className="text-2xl font-bold mb-2">무료</h3>
-                <p className="text-4xl font-bold text-white/70">₩0</p>
-                <p className="text-white/50">영원히 무료</p>
-              </div>
-              
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>핵심 코인 4개 (BTC, ETH, XRP, BNB)</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>기본 체크리스트 점수</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>시장 상태 요약</span>
-                </li>
-                <li className="flex items-center gap-3 text-white/40">
-                  <span className="text-crypto-red">✗</span>
-                  <span>상승 코인 TOP 6</span>
-                </li>
-                <li className="flex items-center gap-3 text-white/40">
-                  <span className="text-crypto-red">✗</span>
-                  <span>진입가/목표가/손절가</span>
-                </li>
-                <li className="flex items-center gap-3 text-white/40">
-                  <span className="text-crypto-red">✗</span>
-                  <span>체크리스트 상세 분석</span>
-                </li>
-                <li className="flex items-center gap-3 text-white/40">
-                  <span className="text-crypto-red">✗</span>
-                  <span>텔레그램 알림</span>
-                </li>
-              </ul>
-              
-              <Link href="/signup" className="block text-center btn-secondary w-full">
-                무료로 시작
-              </Link>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {/* 특징 1 */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
+              <div className="text-3xl mb-4">📊</div>
+              <h3 className="text-lg font-bold mb-2">7단계 체크리스트</h3>
+              <p className="text-white/60 text-sm">거시환경, ETF, 온체인, AI, 선물, 기술적 분석, 전략까지 140점 만점으로 종합 분석</p>
             </div>
             
-            {/* PRO 플랜 */}
-            <div className="card border-2 border-crypto-green relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="pro-badge px-4 py-1">🔥 BEST</span>
-              </div>
-              
-              <div className="text-center mb-6 pt-4">
-                <h3 className="text-2xl font-bold mb-2">PRO</h3>
-                <p className="text-4xl font-bold text-crypto-green">₩49,000</p>
-                <p className="text-white/50">월간 구독</p>
-              </div>
-              
-              <ul className="space-y-3 mb-8">
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>무료 기능 전체 포함</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span className="font-bold text-crypto-green">상승 코인 TOP 6 실시간</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span className="font-bold text-crypto-green">진입가/목표가/손절가 제공</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span className="font-bold text-crypto-green">7단계 체크리스트 상세 분석</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>무제한 코인 검색</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>시그널 히스토리</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <span className="text-crypto-green">✓</span>
-                  <span>텔레그램 실시간 알림</span>
-                </li>
-              </ul>
-              
-              <Link href="/signup?plan=pro" className="block text-center btn-primary w-full">
-                PRO 시작하기
-              </Link>
+            {/* 특징 2 */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
+              <div className="text-3xl mb-4">🎯</div>
+              <h3 className="text-lg font-bold mb-2">진입가/목표가/손절가</h3>
+              <p className="text-white/60 text-sm">명확한 매매 포인트와 손익비를 제공하여 리스크 관리를 도와드립니다</p>
+            </div>
+            
+            {/* 특징 3 */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
+              <div className="text-3xl mb-4">🤖</div>
+              <h3 className="text-lg font-bold mb-2">AI 매매 코멘트</h3>
+              <p className="text-white/60 text-sm">AI가 분석한 시장 상황과 매매 전략을 쉽게 이해할 수 있도록 설명해드립니다</p>
+            </div>
+            
+            {/* 특징 4 */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
+              <div className="text-3xl mb-4">⚡</div>
+              <h3 className="text-lg font-bold mb-2">실시간 업데이트</h3>
+              <p className="text-white/60 text-sm">2분마다 자동 업데이트되는 실시간 데이터로 빠른 시장 대응이 가능합니다</p>
+            </div>
+            
+            {/* 특징 5 */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
+              <div className="text-3xl mb-4">📱</div>
+              <h3 className="text-lg font-bold mb-2">텔레그램 알림</h3>
+              <p className="text-white/60 text-sm">VIP 회원 전용 텔레그램 알림으로 중요한 시그널을 놓치지 마세요</p>
+            </div>
+            
+            {/* 특징 6 */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
+              <div className="text-3xl mb-4">🔥</div>
+              <h3 className="text-lg font-bold mb-2">상승 코인 TOP 6</h3>
+              <p className="text-white/60 text-sm">PRO 회원 전용 실시간 상승 코인 분석으로 기회를 포착하세요</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 7단계 체크리스트 설명 */}
-      <section className="py-20 px-4">
-        <div className="max-w-7xl mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-4">
-            <span className="gradient-text">7단계 체크리스트</span>란?
-          </h2>
-          <p className="text-center text-white/70 mb-12 max-w-2xl mx-auto">
-            여러 지표를 종합해 140점 만점으로 시장 상황을 분석합니다
-          </p>
+      {/* 요금제 미리보기 */}
+      <section className="py-16 px-4 border-t border-white/10">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">합리적인 요금제</h2>
+          <p className="text-white/60 mb-8">무료로 시작하고, 필요할 때 업그레이드하세요</p>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: '🌍', name: '거시환경', max: 20, desc: '금리, 달러 지수, 시장 심리' },
-              { icon: '📊', name: 'ETF·제도권', max: 25, desc: 'ETF 유입량, 기관 매수세' },
-              { icon: '🔗', name: '온체인', max: 25, desc: '거래소 잔고, 고래 움직임' },
-              { icon: '🤖', name: 'AI·메타버스', max: 20, desc: 'AI 코인 섹터, 트렌드' },
-              { icon: '📈', name: '선물시장', max: 20, desc: '펀딩비, OI, 롱숏비율' },
-              { icon: '📉', name: '기술적분석', max: 20, desc: 'RSI, MACD, 이평선' },
-              { icon: '🎯', name: '전략', max: 10, desc: '종합 판단, 리스크 평가' },
-            ].map((item) => (
-              <div key={item.name} className="card text-center">
-                <div className="text-4xl mb-3">{item.icon}</div>
-                <h3 className="font-bold mb-1">{item.name}</h3>
-                <p className="text-crypto-blue font-bold mb-2">{item.max}점</p>
-                <p className="text-sm text-white/50">{item.desc}</p>
-              </div>
-            ))}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Free */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
+              <h3 className="text-lg font-bold mb-2">무료</h3>
+              <p className="text-3xl font-bold mb-4">₩0</p>
+              <ul className="text-sm text-white/60 space-y-2 text-left">
+                <li>✓ 핵심 코인 4개 분석</li>
+                <li>✓ 기본 점수 확인</li>
+                <li>✓ 즐겨찾기 3개</li>
+              </ul>
+            </div>
+            
+            {/* PRO */}
+            <div className="bg-gradient-to-b from-[#00d395]/20 to-transparent rounded-2xl p-6 border border-[#00d395]/50 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#00d395] text-black text-xs font-bold px-3 py-1 rounded-full">인기</div>
+              <h3 className="text-lg font-bold mb-2">PRO</h3>
+              <p className="text-3xl font-bold mb-4">₩49,000<span className="text-sm font-normal">/월</span></p>
+              <ul className="text-sm text-white/80 space-y-2 text-left">
+                <li>✓ 7단계 상세 분석</li>
+                <li>✓ 진입가/목표가/손절가</li>
+                <li>✓ AI 매매 코멘트</li>
+                <li>✓ 무제한 검색</li>
+              </ul>
+            </div>
+            
+            {/* VIP */}
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10">
+              <h3 className="text-lg font-bold mb-2">VIP</h3>
+              <p className="text-3xl font-bold mb-4">₩149,000<span className="text-sm font-normal">/월</span></p>
+              <ul className="text-sm text-white/60 space-y-2 text-left">
+                <li>✓ PRO 모든 기능</li>
+                <li>✓ 텔레그램 알림</li>
+                <li>✓ 1:1 상담</li>
+                <li>✓ VIP 전용 채팅방</li>
+              </ul>
+            </div>
           </div>
+          
+          <Link 
+            href="/pricing" 
+            className="inline-block mt-8 text-[#00d395] hover:underline"
+          >
+            요금제 자세히 보기 →
+          </Link>
         </div>
       </section>
 
       {/* CTA 섹션 */}
-      <section className="py-20 px-4 bg-gradient-to-r from-crypto-green/10 to-crypto-blue/10">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl font-bold mb-4">
+      <section className="py-16 px-4 border-t border-white/10">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">
             지금 바로 시작하세요
           </h2>
-          <p className="text-white/70 mb-8">
-            무료로 시작하고, 마음에 들면 PRO로 업그레이드하세요
+          <p className="text-white/60 mb-8">
+            무료로 가입하고 핵심 코인 분석을 확인해보세요
           </p>
-          <Link href="/signup" className="btn-primary text-lg px-10 py-4 inline-block">
+          <Link 
+            href="/signup" 
+            className="inline-block px-8 py-4 bg-[#00d395] text-black rounded-xl font-semibold hover:bg-[#00d395]/90 transition text-lg"
+          >
             🚀 무료로 시작하기
           </Link>
         </div>
       </section>
 
       {/* 푸터 */}
-      <footer className="py-10 px-4 border-t border-white/10">
-        <div className="max-w-7xl mx-auto text-center text-white/50 text-sm">
-          <p>© 2024 크립토 대시보드 PRO. All rights reserved.</p>
-          <p className="mt-2">
-            투자 결정은 본인의 판단과 책임 하에 이루어져야 합니다.
-          </p>
+      <footer className="border-t border-white/10 py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="text-white/50 text-sm">
+              © 2025 크립토 PRO. All rights reserved.
+            </div>
+            <div className="flex gap-4 text-sm text-white/50">
+              <Link href="/terms" className="hover:text-white">이용약관</Link>
+              <Link href="/privacy" className="hover:text-white">개인정보처리방침</Link>
+              <Link href="/contact" className="hover:text-white">문의하기</Link>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
