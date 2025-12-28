@@ -112,59 +112,34 @@ export default function Dashboard() {
     }
   }, [showDetail])
 
-  // 즐겨찾기 불러오기
   const fetchFavorites = async () => {
     if (!user) return
-    const { data } = await supabase
-      .from('favorites')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+    const { data } = await supabase.from('favorites').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
     if (data) setFavorites(data)
   }
 
-  // 광고 슬롯 불러오기
   const fetchAdSlots = async () => {
-    const { data } = await supabase
-      .from('ad_slots')
-      .select('*')
-      .eq('is_active', true)
-      .order('display_order', { ascending: true })
+    const { data } = await supabase.from('ad_slots').select('*').eq('is_active', true).order('display_order', { ascending: true })
     if (data) setAdSlots(data)
   }
 
-  // 즐겨찾기 추가/제거
   const toggleFavorite = async (coin: AnalyzedCoin) => {
     if (!user) return
-    
     const existing = favorites.find(f => f.coin_id === coin.id)
-    
     if (existing) {
       await supabase.from('favorites').delete().eq('id', existing.id)
       setFavorites(favorites.filter(f => f.id !== existing.id))
       setFavoriteCoins(favoriteCoins.filter(fc => fc.id !== coin.id))
     } else {
-      // 무료 회원은 3개 제한
       if (profile?.plan === 'free' && favorites.length >= 3) {
         alert('무료 회원은 최대 3개까지 즐겨찾기 가능합니다.\nPRO로 업그레이드하면 무제한!')
         return
       }
-      
-      const { data } = await supabase.from('favorites').insert({
-        user_id: user.id,
-        coin_id: coin.id,
-        coin_symbol: coin.symbol,
-        coin_name: coin.name
-      }).select().single()
-      
-      if (data) {
-        setFavorites([data, ...favorites])
-        setFavoriteCoins([coin, ...favoriteCoins])
-      }
+      const { data } = await supabase.from('favorites').insert({ user_id: user.id, coin_id: coin.id, coin_symbol: coin.symbol, coin_name: coin.name }).select().single()
+      if (data) { setFavorites([data, ...favorites]); setFavoriteCoins([coin, ...favoriteCoins]) }
     }
   }
 
-  // 광고 클릭 추적
   const handleAdClick = async (ad: AdSlot) => {
     await supabase.rpc('increment_ad_click', { ad_id: ad.id })
     window.open(ad.link_url, '_blank')
@@ -257,22 +232,8 @@ export default function Dashboard() {
     init()
   }, [supabase, router])
 
-  useEffect(() => { 
-    if (profile) { 
-      fetchData()
-      fetchFavorites()
-      fetchAdSlots()
-      const interval = setInterval(fetchData, 120000)
-      return () => clearInterval(interval) 
-    } 
-  }, [profile])
-
-  useEffect(() => { 
-    const timer = setInterval(() => { 
-      setCountdown(prev => (prev > 0 ? prev - 1 : 120)) 
-    }, 1000)
-    return () => clearInterval(timer) 
-  }, [])
+  useEffect(() => { if (profile) { fetchData(); fetchFavorites(); fetchAdSlots(); const interval = setInterval(fetchData, 120000); return () => clearInterval(interval) } }, [profile])
+  useEffect(() => { const timer = setInterval(() => { setCountdown(prev => (prev > 0 ? prev - 1 : 120)) }, 1000); return () => clearInterval(timer) }, [])
 
   const SignalBadge = ({ signal }: { signal: string }) => {
     const config: Record<string, { text: string; bg: string; icon: string }> = {
@@ -288,55 +249,39 @@ export default function Dashboard() {
 
   const ScoreBar = ({ label, score, max, color }: { label: string; score: number; max: number; color: string }) => (
     <div className="mb-2">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-white/70">{label}</span>
-        <span className="text-white font-semibold">{score}/{max}</span>
-      </div>
-      <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full`} style={{ width: `${(score / max) * 100}%` }} />
-      </div>
+      <div className="flex justify-between text-sm mb-1"><span className="text-white/70">{label}</span><span className="text-white font-semibold">{score}/{max}</span></div>
+      <div className="h-2 bg-white/10 rounded-full overflow-hidden"><div className={`h-full ${color} rounded-full`} style={{ width: `${(score / max) * 100}%` }} /></div>
     </div>
   )
 
-  // 광고 카드 컴포넌트
-  const AdCard = ({ ad }: { ad: AdSlot }) => (
+  const AdCard = ({ ad, size = 'normal' }: { ad: AdSlot; size?: 'normal' | 'large' }) => (
     <div 
-      className={`bg-gradient-to-r ${ad.bg_color} border ${ad.border_color} rounded-xl p-4 cursor-pointer hover:scale-[1.02] transition-all`}
+      className={`bg-gradient-to-r ${ad.bg_color} border ${ad.border_color} rounded-xl cursor-pointer hover:scale-[1.02] transition-all ${size === 'large' ? 'p-5' : 'p-3'}`}
       onClick={() => handleAdClick(ad)}
     >
       <div className="flex items-center gap-3">
-        <span className="text-2xl">{ad.icon}</span>
-        <div className="flex-1">
-          <p className="font-semibold text-white">{ad.title}</p>
-          <p className="text-sm text-white/70">{ad.description}</p>
+        <span className={size === 'large' ? 'text-3xl' : 'text-2xl'}>{ad.icon}</span>
+        <div className="flex-1 min-w-0">
+          <p className={`font-semibold text-white ${size === 'large' ? 'text-base' : 'text-sm'}`}>{ad.title}</p>
+          <p className={`text-white/70 truncate ${size === 'large' ? 'text-sm' : 'text-xs'}`}>{ad.description}</p>
         </div>
-        <span className="text-[#00d395] text-sm font-semibold">{ad.link_text} →</span>
+        <span className="text-[#00d395] text-xs font-semibold whitespace-nowrap">{ad.link_text} →</span>
       </div>
-      {ad.ad_type === 'sponsored' && (
-        <span className="text-xs text-white/40 mt-2 block">광고</span>
-      )}
+      {ad.ad_type === 'sponsored' && <span className="text-xs text-white/40 mt-1 block">광고</span>}
     </div>
   )
 
   const CoinCard = ({ coin, showFavorite = true }: { coin: AnalyzedCoin; showFavorite?: boolean }) => {
     const isPro = profile?.plan !== 'free'
     const isFavorited = favorites.some(f => f.coin_id === coin.id)
-
     return (
       <div 
         className={`bg-[#1a1a2e] rounded-2xl p-5 border cursor-pointer hover:border-[#00d395]/50 transition-all relative ${coin.signal === 'strong_buy' || coin.signal === 'buy' ? 'border-[#00d395]/30' : coin.signal === 'hold' ? 'border-yellow-500/30' : 'border-[#ff6b6b]/30'}`}
         onClick={() => { setSelectedCoin(coin); setShowDetail(true); }}
       >
-        {/* 즐겨찾기 버튼 */}
         {showFavorite && (
-          <button
-            onClick={(e) => { e.stopPropagation(); toggleFavorite(coin); }}
-            className={`absolute top-3 right-3 text-xl transition ${isFavorited ? 'text-yellow-400' : 'text-white/30 hover:text-yellow-400'}`}
-          >
-            {isFavorited ? '★' : '☆'}
-          </button>
+          <button onClick={(e) => { e.stopPropagation(); toggleFavorite(coin); }} className={`absolute top-3 right-3 text-xl transition ${isFavorited ? 'text-yellow-400' : 'text-white/30 hover:text-yellow-400'}`}>{isFavorited ? '★' : '☆'}</button>
         )}
-
         <div className="flex justify-between items-start mb-4 pr-8">
           <div>
             <div className="flex items-center gap-2">
@@ -379,11 +324,13 @@ export default function Dashboard() {
 
   const sidebarAds = adSlots.filter(ad => ad.position === 'sidebar')
   const bannerAds = adSlots.filter(ad => ad.position === 'banner')
+  const ownAds = sidebarAds.filter(ad => ad.ad_type === 'own')
+  const sponsoredAds = sidebarAds.filter(ad => ad.ad_type === 'sponsored')
 
   return (
     <div className="min-h-screen bg-[#0a0a14] text-white">
       <header className="border-b border-white/10 sticky top-0 bg-[#0a0a14]/95 backdrop-blur z-40">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="max-w-[1600px] mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-4">
               <Link href="/" className="text-xl font-bold">🚀 크립토 대시보드 PRO</Link>
@@ -401,19 +348,15 @@ export default function Dashboard() {
 
       {/* 상단 배너 광고 */}
       {bannerAds.length > 0 && (
-        <div className="max-w-7xl mx-auto px-4 pt-4">
-          {bannerAds.map(ad => (
-            <div key={ad.id} className="mb-2">
-              <AdCard ad={ad} />
-            </div>
-          ))}
+        <div className="max-w-[1600px] mx-auto px-4 pt-4">
+          {bannerAds.map(ad => <div key={ad.id} className="mb-2"><AdCard ad={ad} size="large" /></div>)}
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          {/* 메인 콘텐츠 */}
-          <main className="flex-1">
+      <div className="max-w-[1600px] mx-auto px-4 py-8">
+        <div className="flex gap-6">
+          {/* 메인 콘텐츠 - 더 넓게 */}
+          <main className="flex-1 min-w-0">
             {profile?.plan !== 'free' && (
               <div className="mb-8">
                 <div className="flex gap-3">
@@ -430,45 +373,24 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* 즐겨찾기 섹션 */}
             {favorites.length > 0 && (
               <section className="mb-10">
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  ⭐ 즐겨찾기
-                  <span className="text-sm text-white/50 font-normal">
-                    ({favorites.length}{profile?.plan === 'free' ? '/3' : ''})
-                  </span>
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">⭐ 즐겨찾기<span className="text-sm text-white/50 font-normal">({favorites.length}{profile?.plan === 'free' ? '/3' : ''})</span></h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                   {favoriteCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)}
-                  {favorites.filter(f => !favoriteCoins.some(fc => fc.id === f.coin_id)).map(fav => (
-                    <div key={fav.id} className="bg-[#1a1a2e] rounded-2xl p-5 border border-white/10">
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <span className="text-xl font-bold">{fav.coin_symbol.toUpperCase()}</span>
-                          <p className="text-white/50 text-sm">{fav.coin_name}</p>
-                        </div>
-                        <button
-                          onClick={() => toggleFavorite({ id: fav.coin_id, symbol: fav.coin_symbol, name: fav.coin_name } as AnalyzedCoin)}
-                          className="text-yellow-400 text-xl"
-                        >★</button>
-                      </div>
-                      <p className="text-white/30 text-sm mt-2">데이터 로딩 중...</p>
-                    </div>
-                  ))}
                 </div>
               </section>
             )}
 
             <section className="mb-10">
               <h2 className="text-xl font-bold mb-4 flex items-center gap-2">🔥 핵심 코인 (BTC, ETH, XRP, BNB){dataLoading && <span className="w-4 h-4 border-2 border-[#00d395] border-t-transparent rounded-full animate-spin"></span>}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">{coreCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">{coreCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div>
             </section>
 
             {profile?.plan !== 'free' ? (
               <section className="mb-10">
                 <h2 className="text-xl font-bold mb-4 flex items-center gap-2">📈 실시간 상승 코인 TOP 6<span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs font-bold">PRO</span></h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">{topGainers.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{topGainers.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div>
               </section>
             ) : (
               <section className="mb-10">
@@ -493,47 +415,61 @@ export default function Dashboard() {
             </section>
           </main>
 
-          {/* 사이드바 - 광고/SNS 링크 */}
-          <aside className="hidden lg:block w-80 flex-shrink-0">
-            <div className="sticky top-24 space-y-4">
-              <h3 className="text-lg font-bold mb-3">📢 소통 채널</h3>
-              {sidebarAds.filter(ad => ad.ad_type === 'own').map(ad => (
-                <AdCard key={ad.id} ad={ad} />
-              ))}
-              
-              {/* 스폰서 광고 */}
-              {sidebarAds.filter(ad => ad.ad_type === 'sponsored').length > 0 && (
-                <>
-                  <div className="border-t border-white/10 my-4"></div>
-                  <h4 className="text-sm text-white/50 mb-2">스폰서</h4>
-                  {sidebarAds.filter(ad => ad.ad_type === 'sponsored').map(ad => (
-                    <AdCard key={ad.id} ad={ad} />
-                  ))}
-                </>
-              )}
+          {/* 사이드바 - 광고 영역 확장 */}
+          <aside className="hidden xl:block w-72 flex-shrink-0">
+            <div className="sticky top-24 space-y-6">
+              {/* 자체 채널 */}
+              <div>
+                <h3 className="text-lg font-bold mb-3 flex items-center gap-2">📢 소통 채널</h3>
+                <div className="space-y-2">
+                  {ownAds.map(ad => <AdCard key={ad.id} ad={ad} />)}
+                </div>
+              </div>
+
+              {/* 스폰서 광고 영역 */}
+              <div className="border-t border-white/10 pt-6">
+                <h4 className="text-sm text-white/50 mb-3 flex items-center gap-2">💎 파트너</h4>
+                {sponsoredAds.length > 0 ? (
+                  <div className="space-y-2">
+                    {sponsoredAds.map(ad => <AdCard key={ad.id} ad={ad} />)}
+                  </div>
+                ) : (
+                  <div className="bg-white/5 border border-dashed border-white/20 rounded-xl p-4 text-center">
+                    <p className="text-white/30 text-sm">광고 슬롯 A</p>
+                    <p className="text-white/20 text-xs mt-1">문의: ads@example.com</p>
+                  </div>
+                )}
+              </div>
+
+              {/* 추가 광고 슬롯 */}
+              <div className="space-y-2">
+                <div className="bg-white/5 border border-dashed border-white/20 rounded-xl p-4 text-center">
+                  <p className="text-white/30 text-sm">광고 슬롯 B</p>
+                  <p className="text-white/20 text-xs mt-1">배너 300x100</p>
+                </div>
+                <div className="bg-white/5 border border-dashed border-white/20 rounded-xl p-4 text-center">
+                  <p className="text-white/30 text-sm">광고 슬롯 C</p>
+                  <p className="text-white/20 text-xs mt-1">배너 300x100</p>
+                </div>
+              </div>
 
               {/* 광고 문의 */}
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 mt-6">
-                <p className="text-sm text-white/50 text-center">
-                  📩 광고 문의<br/>
-                  <a href="mailto:ads@example.com" className="text-[#00d395] hover:underline">ads@example.com</a>
-                </p>
+              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-xl p-4">
+                <p className="text-sm font-semibold text-white mb-2">📩 광고 문의</p>
+                <p className="text-xs text-white/70 mb-2">월 10만 DAU, 크립토 트레이더 타겟</p>
+                <a href="mailto:ads@example.com" className="text-[#00d395] text-sm hover:underline block">ads@example.com</a>
               </div>
             </div>
           </aside>
         </div>
       </div>
 
-      {/* 모바일용 하단 SNS 링크 */}
-      <div className="lg:hidden border-t border-white/10 p-4">
+      {/* 모바일용 하단 링크 */}
+      <div className="xl:hidden border-t border-white/10 p-4">
         <h3 className="text-lg font-bold mb-3">📢 소통 채널</h3>
         <div className="grid grid-cols-2 gap-2">
-          {sidebarAds.filter(ad => ad.ad_type === 'own').slice(0, 4).map(ad => (
-            <button
-              key={ad.id}
-              onClick={() => handleAdClick(ad)}
-              className={`bg-gradient-to-r ${ad.bg_color} border ${ad.border_color} rounded-lg p-3 text-left`}
-            >
+          {ownAds.slice(0, 4).map(ad => (
+            <button key={ad.id} onClick={() => handleAdClick(ad)} className={`bg-gradient-to-r ${ad.bg_color} border ${ad.border_color} rounded-lg p-3 text-left`}>
               <span className="text-lg">{ad.icon}</span>
               <p className="text-sm font-semibold mt-1">{ad.title}</p>
             </button>
@@ -553,7 +489,6 @@ export default function Dashboard() {
               <button onClick={() => setShowDetail(false)} className="text-white bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg font-semibold">✕ 닫기</button>
             </div>
           </div>
-
           <div className="overflow-y-auto" style={{ height: 'calc(100vh - 70px)', WebkitOverflowScrolling: 'touch' }}>
             <div className="max-w-2xl mx-auto p-4 pb-20">
               <div className="bg-[#1a1a2e] rounded-2xl p-6 mb-4 border border-white/10">
@@ -561,7 +496,6 @@ export default function Dashboard() {
                 <p className="text-4xl font-bold text-[#00d395] mb-2">${selectedCoin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
                 <p className={`text-lg ${selectedCoin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>{selectedCoin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(selectedCoin.price_change_percentage_24h || 0).toFixed(2)}% (24h)</p>
               </div>
-
               <div className="bg-[#1a1a2e] rounded-2xl p-6 mb-4 border border-white/10">
                 <h3 className="text-lg font-bold mb-4 flex items-center gap-2">📊 7단계 체크리스트<span className="text-[#00d395] text-2xl font-bold">{selectedCoin.scores.total}/140</span></h3>
                 {profile?.plan !== 'free' ? (
@@ -575,13 +509,9 @@ export default function Dashboard() {
                     <ScoreBar label="7. 전략 점수" score={selectedCoin.scores.strategy} max={10} color="bg-yellow-500" />
                   </div>
                 ) : (
-                  <div className="bg-white/5 rounded-xl p-6 text-center">
-                    <p className="text-white/50 mb-3">🔒 PRO 회원만 상세 분석을 볼 수 있습니다</p>
-                    <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">PRO 업그레이드</Link>
-                  </div>
+                  <div className="bg-white/5 rounded-xl p-6 text-center"><p className="text-white/50 mb-3">🔒 PRO 회원만 상세 분석을 볼 수 있습니다</p><Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">PRO 업그레이드</Link></div>
                 )}
               </div>
-
               <div className="bg-[#1a1a2e] rounded-2xl p-6 mb-4 border border-white/10">
                 <h3 className="text-lg font-bold mb-4">💰 매매 전략</h3>
                 {profile?.plan !== 'free' ? (
@@ -595,19 +525,14 @@ export default function Dashboard() {
                   <div className="bg-white/5 rounded-xl p-6 text-center"><p className="text-white/50">🔒 PRO 회원 전용</p></div>
                 )}
               </div>
-
               <div className="bg-[#1a1a2e] rounded-2xl p-6 mb-4 border border-white/10">
                 <h3 className="text-lg font-bold mb-4">🤖 AI 매매 코멘트</h3>
                 {profile?.plan !== 'free' ? (
                   <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4"><p className="text-white/90 leading-relaxed text-base">{selectedCoin.ai_comment}</p></div>
                 ) : (
-                  <div className="bg-white/5 rounded-xl p-6 text-center">
-                    <p className="text-white/50 mb-3">🔒 AI 분석은 PRO 회원 전용입니다</p>
-                    <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">PRO 업그레이드</Link>
-                  </div>
+                  <div className="bg-white/5 rounded-xl p-6 text-center"><p className="text-white/50 mb-3">🔒 AI 분석은 PRO 회원 전용입니다</p><Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">PRO 업그레이드</Link></div>
                 )}
               </div>
-
               <button onClick={() => setShowDetail(false)} className="w-full py-4 bg-white/10 hover:bg-white/20 rounded-xl font-semibold text-lg">닫기</button>
             </div>
           </div>
