@@ -443,38 +443,6 @@ export default function Dashboard() {
               <div>
                 <h3 className="text-lg font-bold mb-3 flex items-center gap-2">📢 소통 채널</h3>
                 <div className="space-y-2">
-                  <a href="https://t.me/your_channel" target="_blank" rel="noopener noreferrer" 
-                     className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
-                    <span className="text-2xl">📱</span>
-                    <div>
-                      <p className="font-semibold text-sm">텔레그램</p>
-                      <p className="text-white/50 text-xs">실시간 시그널</p>
-                    </div>
-                  </a>
-                  <a href="https://instagram.com/your_account" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
-                    <span className="text-2xl">📸</span>
-                    <div>
-                      <p className="font-semibold text-sm">인스타그램</p>
-                      <p className="text-white/50 text-xs">차트 분석</p>
-                    </div>
-                  </a>
-                  <a href="https://youtube.com/@your_channel" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
-                    <span className="text-2xl">🎬</span>
-                    <div>
-                      <p className="font-semibold text-sm">유튜브</p>
-                      <p className="text-white/50 text-xs">교육 영상</p>
-                    </div>
-                  </a>
-                  <a href="https://blog.naver.com/your_blog" target="_blank" rel="noopener noreferrer"
-                     className="flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors">
-                    <span className="text-2xl">📝</span>
-                    <div>
-                      <p className="font-semibold text-sm">블로그</p>
-                      <p className="text-white/50 text-xs">심층 분석</p>
-                    </div>
-                  </a>
                   {ownAds.map(ad => <AdCard key={ad.id} ad={ad} />)}
                 </div>
               </div>
