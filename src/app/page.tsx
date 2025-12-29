@@ -422,6 +422,17 @@ export default function Home() {
               <Link href="/refund" className="hover:text-white">환불정책</Link>
             </div>
           </div>
+          
+          {/* 사업자 정보 (토스페이먼츠 필수) */}
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="text-white/40 text-xs leading-relaxed space-y-1 text-center sm:text-left">
+              <p><span className="text-white/50">상호:</span> 맛 없으면 안 Farm | <span className="text-white/50">대표:</span> 장학용</p>
+              <p><span className="text-white/50">사업자등록번호:</span> 493-91-02061</p>
+              <p><span className="text-white/50">주소:</span> 서울특별시 강남구 삼성로85길 39, 3층 E320호(대치동, 가리온)</p>
+              <p><span className="text-white/50">연락처:</span> 010-3463-1519 | <span className="text-white/50">이메일:</span> cheongsong0303@naver.com</p>
+            </div>
+          </div>
+
           <div className="mt-6 pt-6 border-t border-white/10 text-center">
             <p className="text-white/30 text-xs leading-relaxed">
               투자나침반은 투자 조언, 추천, 권유 서비스가 아닙니다. 모든 정보는 교육 및 참고 목적으로만 제공되며,<br className="hidden sm:block"/>
