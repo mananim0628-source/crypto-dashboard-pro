@@ -164,7 +164,7 @@ export default function Dashboard() {
   const [telegramId, setTelegramId] = useState('')
   const notificationRef = useRef<HTMLDivElement>(null)
 
-  const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE', 'PEPE', 'BONK', 'FLOKI', 'WIF', 'ENA', 'PENDLE', 'JUP', 'WLD', 'STRK', 'PYTH', 'JTO', 'MEME', 'BLUR', 'ORDI', 'SATS', 'RATS']
+  const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE', 'PEPE', 'BONK', 'FLOKI', 'WIF', 'ENA', 'PENDLE', 'JUP', 'WLD', 'STRK', 'PYTH', 'JTO', 'MEME', 'BLUR', 'ORDI', 'SATS', 'RATS', 'LEO', 'TON', 'TRX', 'HBAR', 'KAS', 'OKB', 'CRO', 'RUNE', 'STX', 'FTM', 'EGLD', 'FLOW', 'THETA', 'XTZ', 'NEO', 'KLAY', 'ZEC', 'IOTA', 'EOS']
 
   const router = useRouter()
   const supabase = createClientComponentClient()
@@ -219,10 +219,16 @@ export default function Dashboard() {
     return analyzed
   }
 
+  // 다크모드 초기화 - 깜빡임 방지
   useLayoutEffect(() => {
     const saved = localStorage.getItem('dashboard-theme')
-    if (saved === 'light') setTheme('light')
-    else { setTheme('dark'); localStorage.setItem('dashboard-theme', 'dark') }
+    // 저장된 값이 없거나 'dark'이면 다크모드, 'light'일 때만 라이트모드
+    if (saved === 'light') {
+      setTheme('light')
+    } else {
+      setTheme('dark')
+      localStorage.setItem('dashboard-theme', 'dark')
+    }
     setThemeLoaded(true)
   }, [])
 
@@ -266,7 +272,7 @@ export default function Dashboard() {
           }
         } catch (e) {}
         try { const { data: portfolioData } = await supabase.from('portfolio_positions').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }); if (mounted && portfolioData) setPortfolioPositions(portfolioData) } catch (e) {}
-        try { const { data: prefData } = await supabase.from('user_preferences').select('*').eq('user_id', session.user.id).single(); if (mounted && prefData?.theme) { setTheme(prefData.theme); localStorage.setItem('dashboard-theme', prefData.theme) } } catch (e) {}
+        // DB에서 테마 불러오지 않음 - localStorage만 사용
       } catch (error) { if (mounted) setLoading(false) }
     }
     init()
@@ -302,12 +308,38 @@ export default function Dashboard() {
 
   useEffect(() => { const timer = setInterval(() => setCountdown(prev => prev > 0 ? prev - 1 : 120), 1000); return () => clearInterval(timer) }, [])
 
+  // 검색 입력 처리 - 정확한 매칭 우선
   const handleSearchInput = async (query: string) => {
     setSearchQuery(query)
     if (!query.trim()) { setSearchSuggestions([]); setShowSearchDropdown(false); return }
-    const localMatches = allCoins.filter(c => c.toLowerCase().includes(query.toLowerCase())).slice(0, 5).map(c => ({ symbol: c, name: c }))
-    if (localMatches.length > 0) { setSearchSuggestions(localMatches); setShowSearchDropdown(true) }
-    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(query)}`); const data = await response.json(); if (data.coin) { const apiResult = { symbol: data.coin.symbol.toUpperCase(), name: data.coin.name }; const combined = [apiResult, ...localMatches.filter(m => m.symbol !== apiResult.symbol)].slice(0, 6); setSearchSuggestions(combined); setShowSearchDropdown(true) } } catch (e) {}
+    
+    const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
+    
+    // 정확히 일치하는 것 먼저, 그 다음 시작하는 것, 마지막으로 포함하는 것
+    const exactMatch = allCoins.filter(c => c === queryUpper)
+    const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
+    const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
+    
+    const localMatches = [...exactMatch, ...startsWith, ...includes].slice(0, 8).map(c => ({ symbol: c, name: c }))
+    
+    if (localMatches.length > 0) { 
+      setSearchSuggestions(localMatches)
+      setShowSearchDropdown(true) 
+    }
+    
+    // API에서도 검색
+    try { 
+      const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`)
+      const data = await response.json()
+      if (data.coin) { 
+        const apiResult = { symbol: data.coin.symbol.toUpperCase(), name: data.coin.name }
+        // API 결과가 로컬에 없으면 맨 앞에 추가
+        if (!localMatches.some(m => m.symbol === apiResult.symbol)) {
+          setSearchSuggestions([apiResult, ...localMatches].slice(0, 8))
+        }
+        setShowSearchDropdown(true) 
+      } 
+    } catch (e) {}
   }
 
   const selectSearchCoin = async (symbol: string) => {
@@ -318,19 +350,33 @@ export default function Dashboard() {
 
   const searchAlertCoin = async (query: string) => {
     if (!query.trim()) { setAlertSearchResults([]); return }
-    const localResults = allCoins.filter(coin => coin.toLowerCase().includes(query.toLowerCase()))
+    const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
+    
+    const exactMatch = allCoins.filter(c => c === queryUpper)
+    const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
+    const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
+    
+    const localResults = [...exactMatch, ...startsWith, ...includes]
     if (localResults.length > 0) { setAlertSearchResults(localResults.slice(0, 10)); return }
+    
     setAlertSearchLoading(true)
-    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(query)}`); const data = await response.json(); if (data.coin) setAlertSearchResults([data.coin.symbol.toUpperCase()]); else setAlertSearchResults([]) } catch (e) { setAlertSearchResults([]) }
+    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`); const data = await response.json(); if (data.coin) setAlertSearchResults([data.coin.symbol.toUpperCase()]); else setAlertSearchResults([]) } catch (e) { setAlertSearchResults([]) }
     setAlertSearchLoading(false)
   }
 
   const searchPortfolioCoin = async (query: string) => {
     if (!query.trim()) { setPortfolioSearchResults(allCoins.slice(0, 20)); return }
-    const localResults = allCoins.filter(coin => coin.toLowerCase().includes(query.toLowerCase()))
+    const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
+    
+    const exactMatch = allCoins.filter(c => c === queryUpper)
+    const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
+    const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
+    
+    const localResults = [...exactMatch, ...startsWith, ...includes]
     if (localResults.length > 0) { setPortfolioSearchResults(localResults); return }
+    
     setPortfolioSearchLoading(true)
-    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(query)}`); const data = await response.json(); if (data.coin) setPortfolioSearchResults([data.coin.symbol.toUpperCase()]); else setPortfolioSearchResults([]) } catch (e) { setPortfolioSearchResults([]) }
+    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`); const data = await response.json(); if (data.coin) setPortfolioSearchResults([data.coin.symbol.toUpperCase()]); else setPortfolioSearchResults([]) } catch (e) { setPortfolioSearchResults([]) }
     setPortfolioSearchLoading(false)
   }
 
@@ -369,8 +415,9 @@ export default function Dashboard() {
 
   const toggleTheme = async () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme); localStorage.setItem('dashboard-theme', newTheme)
-    if (user) await supabase.from('user_preferences').upsert({ user_id: user.id, theme: newTheme, updated_at: new Date().toISOString() })
+    setTheme(newTheme)
+    localStorage.setItem('dashboard-theme', newTheme)
+    // DB 저장은 하지 않음 - localStorage만 사용
   }
 
   const calculatePortfolioStats = () => {
@@ -399,7 +446,8 @@ export default function Dashboard() {
   const handleSearch = async () => {
     if (!searchQuery.trim() || profile?.plan === 'free') return
     setShowSearchDropdown(false); setSearchLoading(true)
-    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(searchQuery)}`); const data = await response.json(); if (data.coin) setSearchResult(analyzeCoin(data.coin)); else { setSearchResult(null); alert('코인을 찾을 수 없습니다') } } catch (e) {}
+    const cleanQuery = searchQuery.toUpperCase().replace('USDT', '').replace('USD', '').trim()
+    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(cleanQuery)}`); const data = await response.json(); if (data.coin) setSearchResult(analyzeCoin(data.coin)); else { setSearchResult(null); alert('코인을 찾을 수 없습니다') } } catch (e) {}
     setSearchLoading(false)
   }
 
@@ -410,7 +458,7 @@ export default function Dashboard() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   const SignalBadge = ({ signal }: { signal: string }) => {
-    const config: Record<string, { text: string; bg: string; icon: string }> = { strong_buy: { text: '강력 매수', bg: 'bg-green-500', icon: '🚀' }, buy: { text: '매수', bg: 'bg-green-400', icon: '📈' }, hold: { text: '관망', bg: 'bg-yellow-500', icon: '⏸️' }, sell: { text: '매도', bg: 'bg-red-400', icon: '📉' }, strong_sell: { text: '강력 매도', bg: 'bg-red-500', icon: '🔻' } }
+    const config: Record<string, { text: string; bg: string; icon: string }> = { strong_buy: { text: '강력 매수', bg: 'bg-green-500', icon: '🚀' }, buy: { text: '매수', bg: 'bg-green-400', icon: '📈' }, hold: { text: '관망', bg: 'bg-yellow-500', icon: ⏸️' }, sell: { text: '매도', bg: 'bg-red-400', icon: '📉' }, strong_sell: { text: '강력 매도', bg: 'bg-red-500', icon: '🔻' } }
     const { text, bg, icon } = config[signal] || config.hold
     return <span className={`${bg} text-white px-3 py-1 rounded-full text-sm font-bold`}>{icon} {text}</span>
   }
@@ -433,6 +481,7 @@ export default function Dashboard() {
     )
   }
 
+  // 로딩 화면도 다크모드로 고정
   if (!themeLoaded || loading) return (<div className="min-h-screen flex items-center justify-center bg-[#0a0a14]"><div className="text-center"><div className="w-12 h-12 border-4 border-[#00d395] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><p className="text-white">로딩 중...</p></div></div>)
 
   const sidebarAds = adSlots.filter(ad => ad.position === 'sidebar')
@@ -463,7 +512,7 @@ export default function Dashboard() {
         {activeTab === 'dashboard' && (
           <div className="flex gap-6">
             <main className="flex-1 min-w-0">
-              {profile?.plan !== 'free' && (<div className="mb-8 relative" ref={searchDropdownRef}><div className="flex gap-3"><input type="text" value={searchQuery} onChange={(e) => handleSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} onFocus={() => searchQuery && setShowSearchDropdown(true)} placeholder="코인명 입력 (예: doge, pepe, floki)" className={`flex-1 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} border rounded-xl px-4 py-3 focus:outline-none focus:border-[#00d395]`} /><button type="button" onClick={handleSearch} disabled={searchLoading} className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold">{searchLoading ? '검색 중...' : '🔍 분석'}</button></div>{showSearchDropdown && searchSuggestions.length > 0 && (<div className={`absolute left-0 right-24 top-14 rounded-xl border shadow-2xl z-50 ${currentColors.cardBg} ${currentColors.cardBorder}`}>{searchSuggestions.map((s, idx) => (<button key={idx} type="button" onClick={() => selectSearchCoin(s.symbol)} className={`w-full px-4 py-3 text-left hover:bg-[#00d395]/20 flex justify-between items-center ${idx !== searchSuggestions.length - 1 ? `border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}` : ''}`}><span className={`font-bold ${currentColors.text}`}>{s.symbol}</span><span className={currentColors.textSecondary}>{s.name}</span></button>))}</div>)}</div>)}
+              {profile?.plan !== 'free' && (<div className="mb-8 relative" ref={searchDropdownRef}><div className="flex gap-3"><input type="text" value={searchQuery} onChange={(e) => handleSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} onFocus={() => searchQuery && setShowSearchDropdown(true)} placeholder="코인명 입력 (예: ENA, PEPE, FLOKI) - USDT 제외" className={`flex-1 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} border rounded-xl px-4 py-3 focus:outline-none focus:border-[#00d395]`} /><button type="button" onClick={handleSearch} disabled={searchLoading} className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold">{searchLoading ? '검색 중...' : '🔍 분석'}</button></div>{showSearchDropdown && searchSuggestions.length > 0 && (<div className={`absolute left-0 right-24 top-14 rounded-xl border shadow-2xl z-50 ${currentColors.cardBg} ${currentColors.cardBorder}`}>{searchSuggestions.map((s, idx) => (<button key={idx} type="button" onClick={() => selectSearchCoin(s.symbol)} className={`w-full px-4 py-3 text-left hover:bg-[#00d395]/20 flex justify-between items-center ${idx !== searchSuggestions.length - 1 ? `border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}` : ''}`}><span className={`font-bold ${currentColors.text}`}>{s.symbol}</span><span className={currentColors.textSecondary}>{s.name}</span></button>))}</div>)}</div>)}
               {searchResult && <div className="mb-8"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔍 검색 결과</h2><div className="max-w-md"><CoinCard coin={searchResult} /></div></div>}
               <section className="mb-10"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔥 핵심 코인</h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">{coreCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div></section>
               {profile?.plan !== 'free' ? (<section className="mb-10"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📈 상승 코인 TOP 6 <span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs">PRO</span></h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{topGainers.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div></section>) : (<section className="mb-10"><div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-2xl text-center py-12 px-6"><h2 className={`text-2xl font-bold mb-4 ${currentColors.text}`}>🔒 PRO 기능</h2><Link href="/pricing" className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold inline-block">업그레이드 →</Link></div></section>)}
@@ -524,7 +573,7 @@ export default function Dashboard() {
                   </div>
                   <div className={`mt-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-50'} border border-purple-500/30`}>
                     <p className={`font-bold ${currentColors.text} text-sm mb-2`}>📬 알림은 어디로 오나요?</p>
-                    <p className={`${currentColors.textSecondary} text-sm`}><strong className="text-[#00d395]">@crypto_navcp_bot 대화창</strong>으로 알림 메시지가 옵니다!</p>
+                    <p className={`${currentColors.textSecondary} text-sm`}><strong className="text-[#00d395]">@crypto_navcp_bot</strong> 대화창으로 알림이 옵니다!</p>
                     <p className={`${currentColors.textSecondary} text-xs mt-2`}>조건 충족 시 5분마다 자동으로 알림이 전송됩니다.</p>
                   </div>
                 </div>
@@ -550,7 +599,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
                 <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🪙 코인 선택</h3>
-                <div className="mb-4"><input type="text" placeholder="코인 검색 (예: PEPE, FLOKI, ENA...)" value={alertCoinSearch} onChange={(e) => { setAlertCoinSearch(e.target.value); searchAlertCoin(e.target.value) }} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} />{alertCoinSearch && alertSearchResults.length > 0 && (<div className={`mt-2 p-2 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}><div className="flex flex-wrap gap-2">{alertSearchResults.map(coin => (<button key={coin} type="button" onClick={() => { if (!alertSettings.selected_coins.includes(coin)) setAlertSettings({ ...alertSettings, selected_coins: [...alertSettings.selected_coins, coin] }); setAlertCoinSearch(''); setAlertSearchResults([]) }} className="px-3 py-1 rounded-full text-sm bg-[#00d395]/20 text-[#00d395] hover:bg-[#00d395]/30">+ {coin}</button>))}</div></div>)}</div>
+                <div className="mb-4"><input type="text" placeholder="코인 검색 (예: ENA, PEPE, FLOKI) - USDT 제외" value={alertCoinSearch} onChange={(e) => { setAlertCoinSearch(e.target.value); searchAlertCoin(e.target.value) }} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} />{alertCoinSearch && alertSearchResults.length > 0 && (<div className={`mt-2 p-2 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}><div className="flex flex-wrap gap-2">{alertSearchResults.map(coin => (<button key={coin} type="button" onClick={() => { if (!alertSettings.selected_coins.includes(coin)) setAlertSettings({ ...alertSettings, selected_coins: [...alertSettings.selected_coins, coin] }); setAlertCoinSearch(''); setAlertSearchResults([]) }} className="px-3 py-1 rounded-full text-sm bg-[#00d395]/20 text-[#00d395] hover:bg-[#00d395]/30">+ {coin}</button>))}</div></div>)}</div>
                 <p className={`text-xs ${currentColors.textSecondary} mb-3`}>선택된 코인 ({alertSettings.selected_coins.length}개)</p>
                 <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto">{alertSettings.selected_coins.map(coin => (<button key={coin} type="button" onClick={() => setAlertSettings({ ...alertSettings, selected_coins: alertSettings.selected_coins.filter(c => c !== coin) })} className="px-4 py-2 rounded-full text-sm font-semibold bg-[#00d395] text-black hover:bg-[#00d395]/80">{coin} ✕</button>))}</div>
               </div>
