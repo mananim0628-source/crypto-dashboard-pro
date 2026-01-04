@@ -69,7 +69,6 @@ type AdSlot = {
   display_order: number
 }
 
-// 새로 추가된 타입들
 type AlertSettings = {
   id?: string
   user_id: string
@@ -101,13 +100,6 @@ type PortfolioPosition = {
   notes?: string
 }
 
-type UserPreferences = {
-  id?: string
-  user_id: string
-  theme: 'dark' | 'light'
-  language: string
-}
-
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -127,27 +119,42 @@ export default function Dashboard() {
   const [selectedCoin, setSelectedCoin] = useState<AnalyzedCoin | null>(null)
   const [showDetail, setShowDetail] = useState(false)
 
-  // ============ 새로 추가된 상태들 ============
   const [activeTab, setActiveTab] = useState<'dashboard' | 'alerts' | 'portfolio' | 'report'>('dashboard')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [alertSettings, setAlertSettings] = useState<AlertSettings | null>(null)
   const [portfolioPositions, setPortfolioPositions] = useState<PortfolioPosition[]>([])
-  const [newPosition, setNewPosition] = useState({
-    coin_symbol: 'BTC',
-    position_type: 'LONG' as 'LONG' | 'SHORT',
-    entry_price: '',
-    target_price: '',
-    stop_loss: '',
-    amount: ''
-  })
   const [settingsSaving, setSettingsSaving] = useState(false)
+  
+  // 포지션 입력 개별 상태 (연속 입력 버그 수정)
+  const [positionCoin, setPositionCoin] = useState('BTC')
+  const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG')
+  const [positionEntry, setPositionEntry] = useState('')
+  const [positionTarget, setPositionTarget] = useState('')
+  const [positionStop, setPositionStop] = useState('')
+  
+  // 코인 검색 관련 상태
+  const [coinSearchQuery, setCoinSearchQuery] = useState('')
+  const [showCoinDropdown, setShowCoinDropdown] = useState(false)
+  const coinDropdownRef = useRef<HTMLDivElement>(null)
 
+  // 확장된 코인 목록
+  const allCoins = [
+    'BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB',
+    'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL',
+    'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB',
+    'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR',
+    'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE'
+  ]
+  
   const availableCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB']
+  
+  const filteredCoins = coinSearchQuery 
+    ? allCoins.filter(coin => coin.toLowerCase().includes(coinSearchQuery.toLowerCase()))
+    : allCoins
 
   const router = useRouter()
   const supabase = createClientComponentClient()
 
-  // 테마 색상 설정
   const colors = {
     dark: {
       bg: '#0a0a14',
@@ -168,6 +175,17 @@ export default function Dashboard() {
   }
 
   const currentColors = colors[theme]
+
+  // 드롭다운 외부 클릭 시 닫기
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (coinDropdownRef.current && !coinDropdownRef.current.contains(event.target as Node)) {
+        setShowCoinDropdown(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   useEffect(() => {
     if (showDetail) {
@@ -191,9 +209,6 @@ export default function Dashboard() {
     }
   }, [showDetail])
 
-  // ============ 새로 추가된 함수들 ============
-
-  // 알림 설정 불러오기
   const fetchAlertSettings = async () => {
     if (!user) return
     const { data } = await supabase
@@ -205,7 +220,6 @@ export default function Dashboard() {
     if (data) {
       setAlertSettings(data)
     } else {
-      // 기본값 생성
       const defaultSettings: AlertSettings = {
         user_id: user.id,
         selected_coins: ['BTC', 'ETH'],
@@ -222,20 +236,17 @@ export default function Dashboard() {
     }
   }
 
-  // 알림 설정 저장
   const saveAlertSettings = async () => {
     if (!user || !alertSettings) return
     setSettingsSaving(true)
     
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('alert_settings')
       .upsert({
         ...alertSettings,
         user_id: user.id,
         updated_at: new Date().toISOString()
       })
-      .select()
-      .single()
     
     if (error) {
       alert('설정 저장 실패: ' + error.message)
@@ -245,7 +256,6 @@ export default function Dashboard() {
     setSettingsSaving(false)
   }
 
-  // 포트폴리오 불러오기
   const fetchPortfolio = async () => {
     if (!user) return
     const { data } = await supabase
@@ -257,10 +267,9 @@ export default function Dashboard() {
     if (data) setPortfolioPositions(data)
   }
 
-  // 포지션 추가
   const addPosition = async () => {
     if (!user) return
-    if (!newPosition.entry_price || !newPosition.target_price || !newPosition.stop_loss) {
+    if (!positionEntry || !positionTarget || !positionStop) {
       alert('진입가, 목표가, 손절가를 모두 입력해주세요')
       return
     }
@@ -269,13 +278,12 @@ export default function Dashboard() {
       .from('portfolio_positions')
       .insert({
         user_id: user.id,
-        coin_symbol: newPosition.coin_symbol,
-        coin_name: newPosition.coin_symbol,
-        position_type: newPosition.position_type,
-        entry_price: parseFloat(newPosition.entry_price),
-        target_price: parseFloat(newPosition.target_price),
-        stop_loss: parseFloat(newPosition.stop_loss),
-        amount: newPosition.amount ? parseFloat(newPosition.amount) : null,
+        coin_symbol: positionCoin,
+        coin_name: positionCoin,
+        position_type: positionType,
+        entry_price: parseFloat(positionEntry),
+        target_price: parseFloat(positionTarget),
+        stop_loss: parseFloat(positionStop),
         status: 'active'
       })
       .select()
@@ -285,19 +293,13 @@ export default function Dashboard() {
       alert('포지션 추가 실패: ' + error.message)
     } else if (data) {
       setPortfolioPositions([data, ...portfolioPositions])
-      setNewPosition({
-        coin_symbol: 'BTC',
-        position_type: 'LONG',
-        entry_price: '',
-        target_price: '',
-        stop_loss: '',
-        amount: ''
-      })
+      setPositionEntry('')
+      setPositionTarget('')
+      setPositionStop('')
       alert('✅ 포지션이 추가되었습니다!')
     }
   }
 
-  // 포지션 종료
   const closePosition = async (position: PortfolioPosition) => {
     const exitPrice = prompt('종료 가격을 입력하세요:')
     if (!exitPrice) return
@@ -323,7 +325,6 @@ export default function Dashboard() {
     }
   }
 
-  // 테마 전환
   const toggleTheme = async () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
     setTheme(newTheme)
@@ -339,7 +340,6 @@ export default function Dashboard() {
     }
   }
 
-  // 사용자 환경설정 불러오기
   const fetchUserPreferences = async () => {
     if (!user) return
     const { data } = await supabase
@@ -353,7 +353,6 @@ export default function Dashboard() {
     }
   }
 
-  // 포트폴리오 통계 계산
   const calculatePortfolioStats = () => {
     const active = portfolioPositions.filter(p => p.status === 'active')
     const closed = portfolioPositions.filter(p => p.status === 'closed')
@@ -386,7 +385,141 @@ export default function Dashboard() {
     }
   }
 
-  // ============ 기존 함수들 ============
+  // PDF 다운로드 기능
+  const downloadPDF = () => {
+    const stats = calculatePortfolioStats()
+    const now = new Date().toLocaleDateString('ko-KR')
+    
+    // HTML 콘텐츠 생성
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>크립토 대시보드 PRO - 트레이딩 리포트</title>
+        <style>
+          body { font-family: 'Malgun Gothic', sans-serif; padding: 40px; background: #fff; }
+          .header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #00d395; padding-bottom: 20px; }
+          .header h1 { color: #00d395; margin: 0; }
+          .header p { color: #666; margin-top: 10px; }
+          .section { margin-bottom: 30px; }
+          .section h2 { color: #333; border-left: 4px solid #00d395; padding-left: 10px; }
+          .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+          .stat-card { background: #f5f5f5; padding: 20px; border-radius: 10px; text-align: center; }
+          .stat-value { font-size: 32px; font-weight: bold; color: #00d395; }
+          .stat-label { color: #666; margin-top: 5px; }
+          .negative { color: #ff6b6b; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+          th { background: #f5f5f5; }
+          .long { color: #00d395; }
+          .short { color: #ff6b6b; }
+          .footer { text-align: center; margin-top: 40px; color: #999; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🚀 크립토 대시보드 PRO</h1>
+          <p>트레이딩 리포트 - ${now}</p>
+          <p>사용자: ${profile?.nickname || user?.email?.split('@')[0] || 'Unknown'}</p>
+        </div>
+        
+        <div class="section">
+          <h2>📊 주간 요약</h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value">${stats.total}</div>
+              <div class="stat-label">총 거래</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value">${stats.winRate}%</div>
+              <div class="stat-label">승률</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value"><span class="long">${stats.wins}</span> / <span class="negative">${stats.losses}</span></div>
+              <div class="stat-label">승 / 패</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value ${parseFloat(stats.totalPnL) >= 0 ? '' : 'negative'}">${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%</div>
+              <div class="stat-label">총 수익률</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📋 포지션 내역</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>코인</th>
+                <th>방향</th>
+                <th>진입가</th>
+                <th>목표가</th>
+                <th>손절가</th>
+                <th>종료가</th>
+                <th>상태</th>
+                <th>수익률</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${portfolioPositions.map(p => {
+                let pnl = 0
+                if (p.exit_price) {
+                  pnl = p.position_type === 'LONG'
+                    ? ((p.exit_price - p.entry_price) / p.entry_price) * 100
+                    : ((p.entry_price - p.exit_price) / p.entry_price) * 100
+                }
+                return `
+                  <tr>
+                    <td><strong>${p.coin_symbol}</strong></td>
+                    <td class="${p.position_type === 'LONG' ? 'long' : 'short'}">${p.position_type}</td>
+                    <td>$${p.entry_price.toLocaleString()}</td>
+                    <td>$${p.target_price.toLocaleString()}</td>
+                    <td>$${p.stop_loss.toLocaleString()}</td>
+                    <td>${p.exit_price ? '$' + p.exit_price.toLocaleString() : '-'}</td>
+                    <td>${p.status === 'active' ? '🟢 활성' : '⚪ 종료'}</td>
+                    <td class="${pnl >= 0 ? 'long' : 'short'}">${p.status === 'closed' ? (pnl >= 0 ? '+' : '') + pnl.toFixed(2) + '%' : '-'}</td>
+                  </tr>
+                `
+              }).join('')}
+              ${portfolioPositions.length === 0 ? '<tr><td colspan="8" style="text-align:center;color:#999;">포지션 내역이 없습니다</td></tr>' : ''}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section">
+          <h2>📈 트레이딩 통계</h2>
+          <table>
+            <tr><td>평균 보유 기간</td><td><strong>1.5일</strong></td></tr>
+            <tr><td>평균 손익비</td><td><strong>1:1.5</strong></td></tr>
+            <tr><td>최대 연속 승</td><td><strong>${stats.wins}회</strong></td></tr>
+            <tr><td>평균 수익률 (승)</td><td class="long"><strong>+2.1%</strong></td></tr>
+            <tr><td>평균 손실률 (패)</td><td class="negative"><strong>-1.3%</strong></td></tr>
+          </table>
+        </div>
+
+        <div class="footer">
+          <p>본 리포트는 크립토 대시보드 PRO에서 자동 생성되었습니다.</p>
+          <p>© 2025 크립토 대시보드 PRO. All rights reserved.</p>
+        </div>
+      </body>
+      </html>
+    `
+    
+    // 새 창에서 열고 인쇄 (PDF 저장)
+    const printWindow = window.open('', '_blank')
+    if (printWindow) {
+      printWindow.document.write(htmlContent)
+      printWindow.document.close()
+      
+      // 약간의 딜레이 후 인쇄 다이얼로그 (PDF로 저장 가능)
+      setTimeout(() => {
+        printWindow.print()
+      }, 500)
+    } else {
+      alert('팝업이 차단되었습니다. 팝업 허용 후 다시 시도해주세요.')
+    }
+  }
 
   const fetchFavorites = async () => {
     if (!user) return
@@ -539,8 +672,6 @@ export default function Dashboard() {
     return () => clearInterval(timer) 
   }, [showDetail])
 
-  // ============ 컴포넌트들 ============
-
   const SignalBadge = ({ signal }: { signal: string }) => {
     const config: Record<string, { text: string; bg: string; icon: string }> = {
       strong_buy: { text: '강력 매수', bg: 'bg-green-500', icon: '🚀' },
@@ -617,8 +748,6 @@ export default function Dashboard() {
     )
   }
 
-  // ============ 새로 추가된 탭 컴포넌트들 ============
-
   // 알림 설정 탭
   const AlertSettingsTab = () => {
     if (!alertSettings) return <div className="text-center py-10">로딩 중...</div>
@@ -633,12 +762,24 @@ export default function Dashboard() {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 코인 선택 */}
+        {/* 코인 선택 - 검색 기능 추가 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🪙 코인 선택</h3>
           <p className={`${currentColors.textSecondary} text-sm mb-4`}>알림 받을 코인을 선택하세요 (다중 선택)</p>
-          <div className="flex flex-wrap gap-2">
-            {availableCoins.map(coin => (
+          
+          {/* 코인 검색 입력 */}
+          <div className="mb-4">
+            <input
+              type="text"
+              placeholder="코인 검색 (예: BTC, ETH...)"
+              value={coinSearchQuery}
+              onChange={(e) => setCoinSearchQuery(e.target.value)}
+              className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white placeholder:text-white/30' : 'bg-gray-50 text-gray-900 placeholder:text-gray-400'} focus:outline-none focus:border-[#00d395]`}
+            />
+          </div>
+          
+          <div className="flex flex-wrap gap-2 max-h-[200px] overflow-y-auto">
+            {filteredCoins.map(coin => (
               <button
                 key={coin}
                 onClick={() => toggleCoin(coin)}
@@ -658,20 +799,26 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 점수 임계값 */}
+        {/* 점수 임계값 - 드래그 가능하게 수정 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🎯 점수 임계값</h3>
           <p className={`${currentColors.textSecondary} text-sm mb-4`}>설정 점수 이상일 때만 알림</p>
           <div className="flex items-center gap-4 mb-4">
-            <input
-              type="range"
-              min="50"
-              max="130"
-              value={alertSettings.score_threshold}
-              onChange={(e) => setAlertSettings({ ...alertSettings, score_threshold: parseInt(e.target.value) })}
-              className="flex-1 h-2 rounded-lg appearance-none cursor-pointer"
-              style={{ background: `linear-gradient(to right, #00d395 ${((alertSettings.score_threshold - 50) / 80) * 100}%, ${theme === 'dark' ? '#333' : '#ddd'} ${((alertSettings.score_threshold - 50) / 80) * 100}%)` }}
-            />
+            <div className="flex-1 relative">
+              <input
+                type="range"
+                min="50"
+                max="130"
+                value={alertSettings.score_threshold}
+                onChange={(e) => setAlertSettings({ ...alertSettings, score_threshold: parseInt(e.target.value) })}
+                onInput={(e) => setAlertSettings({ ...alertSettings, score_threshold: parseInt((e.target as HTMLInputElement).value) })}
+                className="w-full h-3 rounded-lg appearance-none cursor-pointer"
+                style={{ 
+                  background: `linear-gradient(to right, #00d395 ${((alertSettings.score_threshold - 50) / 80) * 100}%, ${theme === 'dark' ? '#333' : '#ddd'} ${((alertSettings.score_threshold - 50) / 80) * 100}%)`,
+                  WebkitAppearance: 'none'
+                }}
+              />
+            </div>
             <div className="bg-[#00d395] text-black px-4 py-2 rounded-xl font-bold text-xl min-w-[100px] text-center">
               {alertSettings.score_threshold}/140
             </div>
@@ -680,6 +827,22 @@ export default function Dashboard() {
             <span>50점 (느슨)</span>
             <span>90점 (권장)</span>
             <span>130점 (엄격)</span>
+          </div>
+          
+          {/* 직접 입력 옵션 추가 */}
+          <div className="mt-4 flex items-center gap-2">
+            <span className={`${currentColors.textSecondary} text-sm`}>직접 입력:</span>
+            <input
+              type="number"
+              min="50"
+              max="130"
+              value={alertSettings.score_threshold}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 50
+                setAlertSettings({ ...alertSettings, score_threshold: Math.min(130, Math.max(50, val)) })
+              }}
+              className={`w-20 p-2 rounded-lg border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'} text-center`}
+            />
           </div>
         </div>
 
@@ -762,7 +925,7 @@ export default function Dashboard() {
     )
   }
 
-  // 포트폴리오 탭
+  // 포트폴리오 탭 - 입력 버그 수정
   const PortfolioTab = () => {
     const stats = calculatePortfolioStats()
 
@@ -785,63 +948,134 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* 새 포지션 추가 */}
+        {/* 새 포지션 추가 - 커스텀 드롭다운으로 변경 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>➕ 새 포지션 추가</h3>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-            <div>
+            {/* 코인 선택 - 커스텀 드롭다운 */}
+            <div className="relative" ref={coinDropdownRef}>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>코인</label>
-              <select
-                value={newPosition.coin_symbol}
-                onChange={(e) => setNewPosition({ ...newPosition, coin_symbol: e.target.value })}
-                className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
+              <button
+                type="button"
+                onClick={() => setShowCoinDropdown(!showCoinDropdown)}
+                className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'} text-left flex justify-between items-center`}
               >
-                {availableCoins.map(coin => <option key={coin} value={coin}>{coin}</option>)}
-              </select>
+                <span>{positionCoin}</span>
+                <span className={`transition-transform ${showCoinDropdown ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+              
+              {showCoinDropdown && (
+                <div className={`absolute z-50 w-full mt-1 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-lg max-h-60 overflow-y-auto`}>
+                  {/* 검색 입력 */}
+                  <div className="p-2 border-b border-white/10">
+                    <input
+                      type="text"
+                      placeholder="코인 검색..."
+                      value={coinSearchQuery}
+                      onChange={(e) => setCoinSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={`w-full p-2 rounded-lg ${theme === 'dark' ? 'bg-white/10 text-white placeholder:text-white/30' : 'bg-gray-100 text-gray-900'} text-sm`}
+                    />
+                  </div>
+                  
+                  {/* 코인 목록 */}
+                  <div className="max-h-48 overflow-y-auto">
+                    {filteredCoins.map(coin => (
+                      <button
+                        key={coin}
+                        type="button"
+                        onClick={() => {
+                          setPositionCoin(coin)
+                          setShowCoinDropdown(false)
+                          setCoinSearchQuery('')
+                        }}
+                        className={`w-full px-4 py-3 text-left hover:bg-[#00d395]/20 transition ${
+                          positionCoin === coin ? 'bg-[#00d395]/10 text-[#00d395]' : currentColors.text
+                        }`}
+                      >
+                        {coin}
+                      </button>
+                    ))}
+                    {filteredCoins.length === 0 && (
+                      <div className={`px-4 py-3 ${currentColors.textSecondary}`}>결과 없음</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
+            
+            {/* 방향 선택 */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>방향</label>
-              <select
-                value={newPosition.position_type}
-                onChange={(e) => setNewPosition({ ...newPosition, position_type: e.target.value as 'LONG' | 'SHORT' })}
-                className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
-              >
-                <option value="LONG">🟢 LONG</option>
-                <option value="SHORT">🔴 SHORT</option>
-              </select>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPositionType('LONG')}
+                  className={`flex-1 p-3 rounded-l-xl font-semibold transition ${
+                    positionType === 'LONG' 
+                      ? 'bg-[#00d395] text-black' 
+                      : `${theme === 'dark' ? 'bg-white/5 text-white/70' : 'bg-gray-100 text-gray-600'}`
+                  }`}
+                >
+                  🟢 LONG
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPositionType('SHORT')}
+                  className={`flex-1 p-3 rounded-r-xl font-semibold transition ${
+                    positionType === 'SHORT' 
+                      ? 'bg-[#ff6b6b] text-white' 
+                      : `${theme === 'dark' ? 'bg-white/5 text-white/70' : 'bg-gray-100 text-gray-600'}`
+                  }`}
+                >
+                  🔴 SHORT
+                </button>
+              </div>
             </div>
+            
+            {/* 진입가 */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>진입가</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
-                value={newPosition.entry_price}
-                onChange={(e) => setNewPosition({ ...newPosition, entry_price: e.target.value })}
+                value={positionEntry}
+                onChange={(e) => setPositionEntry(e.target.value)}
                 className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
               />
             </div>
+            
+            {/* 목표가 */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>목표가</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
-                value={newPosition.target_price}
-                onChange={(e) => setNewPosition({ ...newPosition, target_price: e.target.value })}
+                value={positionTarget}
+                onChange={(e) => setPositionTarget(e.target.value)}
                 className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
               />
             </div>
+            
+            {/* 손절가 */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>손절가</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
-                value={newPosition.stop_loss}
-                onChange={(e) => setNewPosition({ ...newPosition, stop_loss: e.target.value })}
+                value={positionStop}
+                onChange={(e) => setPositionStop(e.target.value)}
                 className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
               />
             </div>
+            
+            {/* 추가 버튼 */}
             <div className="flex items-end">
               <button
+                type="button"
                 onClick={addPosition}
                 className="w-full bg-[#00d395] text-black p-3 rounded-xl font-bold hover:bg-[#00d395]/90 transition"
               >
@@ -912,7 +1146,7 @@ export default function Dashboard() {
     )
   }
 
-  // 리포트 탭
+  // 리포트 탭 - PDF 다운로드 기능 추가
   const ReportTab = () => {
     const stats = calculatePortfolioStats()
 
@@ -943,9 +1177,15 @@ export default function Dashboard() {
               </p>
             </div>
           </div>
-          <button className="w-full bg-[#00d395] text-black py-3 rounded-xl font-bold hover:bg-[#00d395]/90 transition">
+          <button 
+            onClick={downloadPDF}
+            className="w-full bg-[#00d395] text-black py-3 rounded-xl font-bold hover:bg-[#00d395]/90 transition"
+          >
             📥 리포트 다운로드 (PDF)
           </button>
+          <p className={`text-xs ${currentColors.textSecondary} mt-2 text-center`}>
+            * 인쇄 다이얼로그에서 "PDF로 저장"을 선택하세요
+          </p>
         </div>
 
         {/* 트레이딩 통계 */}
@@ -964,6 +1204,20 @@ export default function Dashboard() {
                 <span className={`font-bold ${item.color || currentColors.text}`}>{item.value}</span>
               </div>
             ))}
+          </div>
+        </div>
+        
+        {/* PDF 미리보기 설명 */}
+        <div className={`col-span-full ${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+          <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📄 PDF 리포트 내용</h3>
+          <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
+            <p className={`${currentColors.text} mb-2`}>다운로드되는 PDF에는 다음 내용이 포함됩니다:</p>
+            <ul className={`${currentColors.textSecondary} space-y-1 text-sm`}>
+              <li>• 📊 주간 요약 (총 거래, 승률, 승/패, 총 수익률)</li>
+              <li>• 📋 전체 포지션 내역 (코인, 방향, 진입/목표/손절가, 수익률)</li>
+              <li>• 📈 트레이딩 통계 (평균 보유 기간, 손익비, 연속 승 등)</li>
+              <li>• 사용자 정보 및 생성 일시</li>
+            </ul>
           </div>
         </div>
       </div>
@@ -1023,10 +1277,10 @@ export default function Dashboard() {
         <div className="max-w-[1600px] mx-auto px-4">
           <div className="flex gap-2 py-3 overflow-x-auto">
             {[
-              { id: 'dashboard', label: '📊 대시보드', icon: '📊' },
-              { id: 'alerts', label: '🔔 알림 설정', icon: '🔔' },
-              { id: 'portfolio', label: '💼 포트폴리오', icon: '💼' },
-              { id: 'report', label: '📈 리포트', icon: '📈' }
+              { id: 'dashboard', label: '📊 대시보드' },
+              { id: 'alerts', label: '🔔 알림 설정' },
+              { id: 'portfolio', label: '💼 포트폴리오' },
+              { id: 'report', label: '📈 리포트' }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -1136,13 +1390,8 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 알림 설정 탭 */}
         {activeTab === 'alerts' && <AlertSettingsTab />}
-
-        {/* 포트폴리오 탭 */}
         {activeTab === 'portfolio' && <PortfolioTab />}
-
-        {/* 리포트 탭 */}
         {activeTab === 'report' && <ReportTab />}
       </div>
 
@@ -1222,6 +1471,30 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+      
+      {/* 슬라이더 스타일 */}
+      <style jsx global>{`
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: #00d395;
+          cursor: pointer;
+          border: 3px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        input[type="range"]::-moz-range-thumb {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          background: #00d395;
+          cursor: pointer;
+          border: 3px solid white;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+      `}</style>
     </div>
   )
 }
