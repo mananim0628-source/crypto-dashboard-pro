@@ -1,1 +1,23 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/check-alerts",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+```
 
+6. 저장 (Ctrl+S)
+
+---
+
+### 최종 구조:
+```
+프로젝트폴더/
+├── package.json      ← 이거랑 같은 위치
+├── vercel.json       ← 여기에 새로 생성!
+├── src/
+│   └── app/
+│       └── ...
+└── ...
