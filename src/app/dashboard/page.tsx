@@ -497,23 +497,52 @@ export default function Dashboard() {
               </div>
             )}
             
-            <div className={`${currentColors.cardBg} rounded-2xl p-6 border border-blue-500/30`}>
+            <div className={`${currentColors.cardBg} rounded-2xl p-6 border border-[#00d395]/50`}>
               <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📱 텔레그램 알림 연동</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <p className={`text-sm ${currentColors.textSecondary} mb-3`}>텔레그램으로 실시간 알림을 받으세요!</p>
-                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 space-y-2 text-sm`}>
-                    <p className={currentColors.text}><strong>1단계:</strong> @userinfobot 검색 → /start → ID 확인</p>
-                    <p className={currentColors.text}><strong>2단계:</strong> 아래에 ID 입력</p>
-                    <p className={currentColors.text}><strong>3단계:</strong> 만든 봇 검색 → /start 클릭</p>
-                    <p className={currentColors.text}><strong>4단계:</strong> 설정 저장!</p>
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 space-y-3 text-sm`}>
+                    <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <p className={`font-bold ${currentColors.text}`}>1단계: 내 텔레그램 ID 확인</p>
+                      <p className={currentColors.textSecondary}>텔레그램에서 <span className="text-[#00d395] font-mono">@userinfobot</span> 검색 → 대화 시작 → 표시되는 숫자가 내 ID</p>
+                    </div>
+                    <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <p className={`font-bold ${currentColors.text}`}>2단계: ID 입력</p>
+                      <p className={currentColors.textSecondary}>오른쪽 입력란에 복사한 ID 붙여넣기</p>
+                    </div>
+                    <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} border border-[#00d395]/30`}>
+                      <p className={`font-bold text-[#00d395]`}>3단계: 알림 봇 활성화 (중요!)</p>
+                      <p className={currentColors.textSecondary}>텔레그램에서 <span className="text-[#00d395] font-mono">@crypto_navcp_bot</span> 검색</p>
+                      <p className={currentColors.textSecondary}>→ 대화 시작 → <span className="text-[#00d395] font-mono">/start</span> 또는 "시작" 버튼 클릭</p>
+                      <p className={`text-yellow-400 text-xs mt-2`}>⚠️ 이 단계를 하지 않으면 알림을 받을 수 없습니다!</p>
+                    </div>
+                    <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'}`}>
+                      <p className={`font-bold ${currentColors.text}`}>4단계: 설정 저장</p>
+                      <p className={currentColors.textSecondary}>아래 "설정 저장" 버튼 클릭</p>
+                    </div>
+                  </div>
+                  <div className={`mt-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-purple-500/10' : 'bg-purple-50'} border border-purple-500/30`}>
+                    <p className={`font-bold ${currentColors.text} text-sm mb-2`}>📬 알림은 어디로 오나요?</p>
+                    <p className={`${currentColors.textSecondary} text-sm`}><strong className="text-[#00d395]">@crypto_navcp_bot 대화창</strong>으로 알림 메시지가 옵니다!</p>
+                    <p className={`${currentColors.textSecondary} text-xs mt-2`}>조건 충족 시 5분마다 자동으로 알림이 전송됩니다.</p>
                   </div>
                 </div>
                 <div>
                   <label className={`block text-sm ${currentColors.textSecondary} mb-2`}>텔레그램 ID (숫자)</label>
-                  <input type="text" inputMode="numeric" placeholder="예: 7193185554" value={telegramId} onChange={(e) => setTelegramId(e.target.value)} className={`w-full p-4 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'} text-lg`} />
+                  <input type="text" inputMode="numeric" placeholder="예: 1234567890" value={telegramId} onChange={(e) => setTelegramId(e.target.value)} className={`w-full p-4 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'} text-lg`} />
                   <p className={`text-xs ${currentColors.textSecondary} mt-2`}>* @userinfobot 에게 메시지 보내면 ID를 알려줍니다</p>
                   {telegramId && (<div className="mt-3 p-3 bg-[#00d395]/10 border border-[#00d395]/30 rounded-lg"><p className="text-[#00d395] text-sm">✅ ID 입력됨: {telegramId}</p></div>)}
+                  
+                  <div className={`mt-6 p-4 rounded-xl ${theme === 'dark' ? 'bg-yellow-500/10' : 'bg-yellow-50'} border border-yellow-500/30`}>
+                    <p className={`font-bold text-yellow-400 text-sm mb-2`}>⚠️ 알림이 안 올 때 체크리스트</p>
+                    <ul className={`${currentColors.textSecondary} text-xs space-y-1`}>
+                      <li>□ @userinfobot에서 ID를 정확히 복사했나요?</li>
+                      <li>□ @crypto_navcp_bot 에게 /start를 보냈나요?</li>
+                      <li>□ 설정 저장을 눌렀나요?</li>
+                      <li>□ 선택한 코인이 임계점 이상인가요?</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
