@@ -458,7 +458,7 @@ export default function Dashboard() {
   const unreadCount = notifications.filter(n => !n.read).length
 
   const SignalBadge = ({ signal }: { signal: string }) => {
-    const config: Record<string, { text: string; bg: string; icon: string }> = { strong_buy: { text: '강력 매수', bg: 'bg-green-500', icon: '🚀' }, buy: { text: '매수', bg: 'bg-green-400', icon: '📈' }, hold: { text: '관망', bg: 'bg-yellow-500', icon: ⏸️' }, sell: { text: '매도', bg: 'bg-red-400', icon: '📉' }, strong_sell: { text: '강력 매도', bg: 'bg-red-500', icon: '🔻' } }
+    const config: Record<string, { text: string; bg: string; icon: string }> = { strong_buy: { text: '강력 매수', bg: 'bg-green-500', icon: '🚀' }, buy: { text: '매수', bg: 'bg-green-400', icon: '📈' }, hold: { text: '관망', bg: 'bg-yellow-500', icon: '⏸️' }, sell: { text: '매도', bg: 'bg-red-400', icon: '📉' }, strong_sell: { text: '강력 매도', bg: 'bg-red-500', icon: '🔻' } }
     const { text, bg, icon } = config[signal] || config.hold
     return <span className={`${bg} text-white px-3 py-1 rounded-full text-sm font-bold`}>{icon} {text}</span>
   }
