@@ -81,7 +81,7 @@ type AlertSettings = {
   alert_signal: boolean
   alert_score_change: boolean
   alert_price: boolean
-  telegram_id?: string
+  telegram_id?: string | null
 }
 
 type PortfolioPosition = {
