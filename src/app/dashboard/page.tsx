@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -100,6 +100,15 @@ type PortfolioPosition = {
   notes?: string
 }
 
+// 테마 초기값을 localStorage에서 가져오는 함수
+const getInitialTheme = (): 'dark' | 'light' => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('dashboard-theme')
+    if (saved === 'light' || saved === 'dark') return saved
+  }
+  return 'dark'
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -120,24 +129,32 @@ export default function Dashboard() {
   const [showDetail, setShowDetail] = useState(false)
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'alerts' | 'portfolio' | 'report'>('dashboard')
+  
+  // 테마 상태 - localStorage에서 초기값 로드
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
+  const [themeLoaded, setThemeLoaded] = useState(false)
+  
   const [alertSettings, setAlertSettings] = useState<AlertSettings | null>(null)
   const [portfolioPositions, setPortfolioPositions] = useState<PortfolioPosition[]>([])
   const [settingsSaving, setSettingsSaving] = useState(false)
   
-  // 포지션 입력 개별 상태 (연속 입력 버그 수정)
+  // 포지션 입력 - ref 사용으로 리렌더링 방지
   const [positionCoin, setPositionCoin] = useState('BTC')
   const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG')
-  const [positionEntry, setPositionEntry] = useState('')
-  const [positionTarget, setPositionTarget] = useState('')
-  const [positionStop, setPositionStop] = useState('')
+  const entryRef = useRef<HTMLInputElement>(null)
+  const targetRef = useRef<HTMLInputElement>(null)
+  const stopRef = useRef<HTMLInputElement>(null)
   
   // 코인 검색 관련 상태
   const [coinSearchQuery, setCoinSearchQuery] = useState('')
   const [showCoinDropdown, setShowCoinDropdown] = useState(false)
   const coinDropdownRef = useRef<HTMLDivElement>(null)
+  const coinSearchInputRef = useRef<HTMLInputElement>(null)
+  
+  // 슬라이더 로컬 상태 (스무스한 드래그를 위해)
+  const [sliderValue, setSliderValue] = useState(90)
+  const sliderRef = useRef<HTMLInputElement>(null)
 
-  // 확장된 코인 목록
   const allCoins = [
     'BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB',
     'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL',
@@ -176,6 +193,15 @@ export default function Dashboard() {
 
   const currentColors = colors[theme]
 
+  // 테마 초기 로드 (localStorage 우선)
+  useEffect(() => {
+    const saved = localStorage.getItem('dashboard-theme')
+    if (saved === 'light' || saved === 'dark') {
+      setTheme(saved)
+    }
+    setThemeLoaded(true)
+  }, [])
+
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -209,19 +235,19 @@ export default function Dashboard() {
     }
   }, [showDetail])
 
-  const fetchAlertSettings = async () => {
-    if (!user) return
+  const fetchAlertSettings = async (userId: string) => {
     const { data } = await supabase
       .from('alert_settings')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
     
     if (data) {
       setAlertSettings(data)
+      setSliderValue(data.score_threshold)
     } else {
       const defaultSettings: AlertSettings = {
-        user_id: user.id,
+        user_id: userId,
         selected_coins: ['BTC', 'ETH'],
         score_threshold: 90,
         time_morning: true,
@@ -233,6 +259,7 @@ export default function Dashboard() {
         alert_price: true
       }
       setAlertSettings(defaultSettings)
+      setSliderValue(90)
     }
   }
 
@@ -240,28 +267,31 @@ export default function Dashboard() {
     if (!user || !alertSettings) return
     setSettingsSaving(true)
     
+    const settingsToSave = {
+      ...alertSettings,
+      score_threshold: sliderValue,
+      user_id: user.id,
+      updated_at: new Date().toISOString()
+    }
+    
     const { error } = await supabase
       .from('alert_settings')
-      .upsert({
-        ...alertSettings,
-        user_id: user.id,
-        updated_at: new Date().toISOString()
-      })
+      .upsert(settingsToSave)
     
     if (error) {
       alert('설정 저장 실패: ' + error.message)
     } else {
+      setAlertSettings(settingsToSave)
       alert('✅ 설정이 저장되었습니다!')
     }
     setSettingsSaving(false)
   }
 
-  const fetchPortfolio = async () => {
-    if (!user) return
+  const fetchPortfolio = async (userId: string) => {
     const { data } = await supabase
       .from('portfolio_positions')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false })
     
     if (data) setPortfolioPositions(data)
@@ -269,7 +299,12 @@ export default function Dashboard() {
 
   const addPosition = async () => {
     if (!user) return
-    if (!positionEntry || !positionTarget || !positionStop) {
+    
+    const entry = entryRef.current?.value || ''
+    const target = targetRef.current?.value || ''
+    const stop = stopRef.current?.value || ''
+    
+    if (!entry || !target || !stop) {
       alert('진입가, 목표가, 손절가를 모두 입력해주세요')
       return
     }
@@ -281,9 +316,9 @@ export default function Dashboard() {
         coin_symbol: positionCoin,
         coin_name: positionCoin,
         position_type: positionType,
-        entry_price: parseFloat(positionEntry),
-        target_price: parseFloat(positionTarget),
-        stop_loss: parseFloat(positionStop),
+        entry_price: parseFloat(entry),
+        target_price: parseFloat(target),
+        stop_loss: parseFloat(stop),
         status: 'active'
       })
       .select()
@@ -293,9 +328,9 @@ export default function Dashboard() {
       alert('포지션 추가 실패: ' + error.message)
     } else if (data) {
       setPortfolioPositions([data, ...portfolioPositions])
-      setPositionEntry('')
-      setPositionTarget('')
-      setPositionStop('')
+      if (entryRef.current) entryRef.current.value = ''
+      if (targetRef.current) targetRef.current.value = ''
+      if (stopRef.current) stopRef.current.value = ''
       alert('✅ 포지션이 추가되었습니다!')
     }
   }
@@ -325,9 +360,11 @@ export default function Dashboard() {
     }
   }
 
+  // 테마 전환 - localStorage에도 저장
   const toggleTheme = async () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
     setTheme(newTheme)
+    localStorage.setItem('dashboard-theme', newTheme)
     
     if (user) {
       await supabase
@@ -340,16 +377,16 @@ export default function Dashboard() {
     }
   }
 
-  const fetchUserPreferences = async () => {
-    if (!user) return
+  const fetchUserPreferences = async (userId: string) => {
     const { data } = await supabase
       .from('user_preferences')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .single()
     
     if (data?.theme) {
       setTheme(data.theme)
+      localStorage.setItem('dashboard-theme', data.theme)
     }
   }
 
@@ -385,12 +422,11 @@ export default function Dashboard() {
     }
   }
 
-  // PDF 다운로드 기능
+  // PDF 다운로드
   const downloadPDF = () => {
     const stats = calculatePortfolioStats()
     const now = new Date().toLocaleDateString('ko-KR')
     
-    // HTML 콘텐츠 생성
     const htmlContent = `
       <!DOCTYPE html>
       <html>
@@ -506,13 +542,10 @@ export default function Dashboard() {
       </html>
     `
     
-    // 새 창에서 열고 인쇄 (PDF 저장)
     const printWindow = window.open('', '_blank')
     if (printWindow) {
       printWindow.document.write(htmlContent)
       printWindow.document.close()
-      
-      // 약간의 딜레이 후 인쇄 다이얼로그 (PDF로 저장 가능)
       setTimeout(() => {
         printWindow.print()
       }, 500)
@@ -521,9 +554,8 @@ export default function Dashboard() {
     }
   }
 
-  const fetchFavorites = async () => {
-    if (!user) return
-    const { data } = await supabase.from('favorites').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+  const fetchFavorites = async (userId: string) => {
+    const { data } = await supabase.from('favorites').select('*').eq('user_id', userId).order('created_at', { ascending: false })
     if (data) setFavorites(data)
   }
 
@@ -605,7 +637,7 @@ export default function Dashboard() {
     return analyzed
   }
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setDataLoading(true)
     try {
       const response = await fetch('/api/crypto?action=core')
@@ -620,7 +652,7 @@ export default function Dashboard() {
       setCountdown(120)
     } catch (error) { console.error('Failed to fetch data:', error) }
     finally { setDataLoading(false) }
-  }
+  }, [profile?.plan])
 
   const handleSearch = async () => {
     if (!searchQuery.trim() || profile?.plan === 'free') return
@@ -634,30 +666,63 @@ export default function Dashboard() {
     finally { setSearchLoading(false) }
   }
 
+  // 인증 상태 리스너 사용 (로그인 문제 해결)
   useEffect(() => {
-    const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/login'); return }
-      setUser(user)
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single()
-      setProfile(profileData)
-      setLoading(false)
+    // 초기 세션 체크
+    const initAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (session?.user) {
+        setUser(session.user)
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+        setProfile(profileData)
+        setLoading(false)
+        
+        // 데이터 로드
+        fetchData()
+        fetchFavorites(session.user.id)
+        fetchAdSlots()
+        fetchAlertSettings(session.user.id)
+        fetchPortfolio(session.user.id)
+        fetchUserPreferences(session.user.id)
+      } else {
+        router.push('/login')
+      }
     }
-    init()
+    
+    initAuth()
+
+    // Auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', session.user.id).single()
+        setProfile(profileData)
+        setLoading(false)
+        
+        fetchData()
+        fetchFavorites(session.user.id)
+        fetchAdSlots()
+        fetchAlertSettings(session.user.id)
+        fetchPortfolio(session.user.id)
+        fetchUserPreferences(session.user.id)
+      } else if (event === 'SIGNED_OUT') {
+        router.push('/login')
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [supabase, router])
 
+  // 데이터 자동 새로고침
   useEffect(() => { 
     if (profile) { 
-      fetchData()
-      fetchFavorites()
-      fetchAdSlots()
-      fetchAlertSettings()
-      fetchPortfolio()
-      fetchUserPreferences()
       const interval = setInterval(fetchData, 120000)
       return () => clearInterval(interval) 
     } 
-  }, [profile])
+  }, [profile, fetchData])
 
   useEffect(() => { 
     let count = countdown
@@ -762,17 +827,18 @@ export default function Dashboard() {
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 코인 선택 - 검색 기능 추가 */}
+        {/* 코인 선택 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🪙 코인 선택</h3>
           <p className={`${currentColors.textSecondary} text-sm mb-4`}>알림 받을 코인을 선택하세요 (다중 선택)</p>
           
-          {/* 코인 검색 입력 */}
+          {/* 코인 검색 - 바로 입력 가능하게 수정 */}
           <div className="mb-4">
             <input
+              ref={coinSearchInputRef}
               type="text"
               placeholder="코인 검색 (예: BTC, ETH...)"
-              value={coinSearchQuery}
+              defaultValue=""
               onChange={(e) => setCoinSearchQuery(e.target.value)}
               className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white placeholder:text-white/30' : 'bg-gray-50 text-gray-900 placeholder:text-gray-400'} focus:outline-none focus:border-[#00d395]`}
             />
@@ -782,6 +848,7 @@ export default function Dashboard() {
             {filteredCoins.map(coin => (
               <button
                 key={coin}
+                type="button"
                 onClick={() => toggleCoin(coin)}
                 className={`px-4 py-2 rounded-full text-sm font-semibold transition ${
                   alertSettings.selected_coins.includes(coin)
@@ -799,49 +866,56 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* 점수 임계값 - 드래그 가능하게 수정 */}
+        {/* 점수 임계값 - 완전히 새로운 방식 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🎯 점수 임계값</h3>
           <p className={`${currentColors.textSecondary} text-sm mb-4`}>설정 점수 이상일 때만 알림</p>
+          
           <div className="flex items-center gap-4 mb-4">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative py-2">
+              {/* 배경 트랙 */}
+              <div className={`absolute inset-x-0 top-1/2 -translate-y-1/2 h-3 rounded-full ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`} />
+              {/* 채워진 트랙 */}
+              <div 
+                className="absolute top-1/2 -translate-y-1/2 left-0 h-3 rounded-full bg-[#00d395]"
+                style={{ width: `${((sliderValue - 50) / 80) * 100}%` }}
+              />
+              {/* 실제 인풋 */}
               <input
+                ref={sliderRef}
                 type="range"
                 min="50"
                 max="130"
-                value={alertSettings.score_threshold}
-                onChange={(e) => setAlertSettings({ ...alertSettings, score_threshold: parseInt(e.target.value) })}
-                onInput={(e) => setAlertSettings({ ...alertSettings, score_threshold: parseInt((e.target as HTMLInputElement).value) })}
-                className="w-full h-3 rounded-lg appearance-none cursor-pointer"
-                style={{ 
-                  background: `linear-gradient(to right, #00d395 ${((alertSettings.score_threshold - 50) / 80) * 100}%, ${theme === 'dark' ? '#333' : '#ddd'} ${((alertSettings.score_threshold - 50) / 80) * 100}%)`,
-                  WebkitAppearance: 'none'
-                }}
+                value={sliderValue}
+                onChange={(e) => setSliderValue(parseInt(e.target.value))}
+                className="relative w-full h-6 appearance-none bg-transparent cursor-pointer z-10"
+                style={{ WebkitAppearance: 'none' }}
               />
             </div>
             <div className="bg-[#00d395] text-black px-4 py-2 rounded-xl font-bold text-xl min-w-[100px] text-center">
-              {alertSettings.score_threshold}/140
+              {sliderValue}/140
             </div>
           </div>
-          <div className={`flex justify-between text-xs ${currentColors.textSecondary}`}>
+          
+          <div className={`flex justify-between text-xs ${currentColors.textSecondary} mb-4`}>
             <span>50점 (느슨)</span>
             <span>90점 (권장)</span>
             <span>130점 (엄격)</span>
           </div>
           
-          {/* 직접 입력 옵션 추가 */}
-          <div className="mt-4 flex items-center gap-2">
+          {/* 직접 입력 */}
+          <div className="flex items-center gap-2">
             <span className={`${currentColors.textSecondary} text-sm`}>직접 입력:</span>
             <input
               type="number"
               min="50"
               max="130"
-              value={alertSettings.score_threshold}
+              value={sliderValue}
               onChange={(e) => {
                 const val = parseInt(e.target.value) || 50
-                setAlertSettings({ ...alertSettings, score_threshold: Math.min(130, Math.max(50, val)) })
+                setSliderValue(Math.min(130, Math.max(50, val)))
               }}
-              className={`w-20 p-2 rounded-lg border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'} text-center`}
+              className={`w-24 p-2 rounded-lg border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'} text-center`}
             />
           </div>
         </div>
@@ -914,6 +988,7 @@ export default function Dashboard() {
         {/* 저장 버튼 */}
         <div className="col-span-full">
           <button
+            type="button"
             onClick={saveAlertSettings}
             disabled={settingsSaving}
             className="w-full bg-[#00d395] text-black py-4 rounded-xl font-bold text-lg hover:bg-[#00d395]/90 disabled:opacity-50 transition"
@@ -925,7 +1000,7 @@ export default function Dashboard() {
     )
   }
 
-  // 포트폴리오 탭 - 입력 버그 수정
+  // 포트폴리오 탭
   const PortfolioTab = () => {
     const stats = calculatePortfolioStats()
 
@@ -948,7 +1023,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* 새 포지션 추가 - 커스텀 드롭다운으로 변경 */}
+        {/* 새 포지션 추가 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>➕ 새 포지션 추가</h3>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
@@ -965,29 +1040,15 @@ export default function Dashboard() {
               </button>
               
               {showCoinDropdown && (
-                <div className={`absolute z-50 w-full mt-1 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-lg max-h-60 overflow-y-auto`}>
-                  {/* 검색 입력 */}
-                  <div className="p-2 border-b border-white/10">
-                    <input
-                      type="text"
-                      placeholder="코인 검색..."
-                      value={coinSearchQuery}
-                      onChange={(e) => setCoinSearchQuery(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className={`w-full p-2 rounded-lg ${theme === 'dark' ? 'bg-white/10 text-white placeholder:text-white/30' : 'bg-gray-100 text-gray-900'} text-sm`}
-                    />
-                  </div>
-                  
-                  {/* 코인 목록 */}
-                  <div className="max-h-48 overflow-y-auto">
-                    {filteredCoins.map(coin => (
+                <div className={`absolute z-50 w-full mt-1 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-lg`}>
+                  <div className="max-h-60 overflow-y-auto">
+                    {allCoins.map(coin => (
                       <button
                         key={coin}
                         type="button"
                         onClick={() => {
                           setPositionCoin(coin)
                           setShowCoinDropdown(false)
-                          setCoinSearchQuery('')
                         }}
                         className={`w-full px-4 py-3 text-left hover:bg-[#00d395]/20 transition ${
                           positionCoin === coin ? 'bg-[#00d395]/10 text-[#00d395]' : currentColors.text
@@ -996,9 +1057,6 @@ export default function Dashboard() {
                         {coin}
                       </button>
                     ))}
-                    {filteredCoins.length === 0 && (
-                      <div className={`px-4 py-3 ${currentColors.textSecondary}`}>결과 없음</div>
-                    )}
                   </div>
                 </div>
               )}
@@ -1017,7 +1075,7 @@ export default function Dashboard() {
                       : `${theme === 'dark' ? 'bg-white/5 text-white/70' : 'bg-gray-100 text-gray-600'}`
                   }`}
                 >
-                  🟢 LONG
+                  🟢
                 </button>
                 <button
                   type="button"
@@ -1028,46 +1086,43 @@ export default function Dashboard() {
                       : `${theme === 'dark' ? 'bg-white/5 text-white/70' : 'bg-gray-100 text-gray-600'}`
                   }`}
                 >
-                  🔴 SHORT
+                  🔴
                 </button>
               </div>
             </div>
             
-            {/* 진입가 */}
+            {/* 진입가 - uncontrolled */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>진입가</label>
               <input
+                ref={entryRef}
                 type="text"
                 inputMode="decimal"
                 placeholder="0.00"
-                value={positionEntry}
-                onChange={(e) => setPositionEntry(e.target.value)}
                 className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
               />
             </div>
             
-            {/* 목표가 */}
+            {/* 목표가 - uncontrolled */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>목표가</label>
               <input
+                ref={targetRef}
                 type="text"
                 inputMode="decimal"
                 placeholder="0.00"
-                value={positionTarget}
-                onChange={(e) => setPositionTarget(e.target.value)}
                 className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
               />
             </div>
             
-            {/* 손절가 */}
+            {/* 손절가 - uncontrolled */}
             <div>
               <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>손절가</label>
               <input
+                ref={stopRef}
                 type="text"
                 inputMode="decimal"
                 placeholder="0.00"
-                value={positionStop}
-                onChange={(e) => setPositionStop(e.target.value)}
                 className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50 text-gray-900'}`}
               />
             </div>
@@ -1128,6 +1183,7 @@ export default function Dashboard() {
                       <td className="p-3">
                         {position.status === 'active' && (
                           <button
+                            type="button"
                             onClick={() => closePosition(position)}
                             className="px-3 py-1 border border-[#ff6b6b] text-[#ff6b6b] rounded-lg text-sm hover:bg-[#ff6b6b]/10 transition"
                           >
@@ -1146,13 +1202,12 @@ export default function Dashboard() {
     )
   }
 
-  // 리포트 탭 - PDF 다운로드 기능 추가
+  // 리포트 탭
   const ReportTab = () => {
     const stats = calculatePortfolioStats()
 
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* 주간 리포트 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📊 주간 리포트</h3>
           <div className="grid grid-cols-2 gap-4 mb-4">
@@ -1178,6 +1233,7 @@ export default function Dashboard() {
             </div>
           </div>
           <button 
+            type="button"
             onClick={downloadPDF}
             className="w-full bg-[#00d395] text-black py-3 rounded-xl font-bold hover:bg-[#00d395]/90 transition"
           >
@@ -1188,7 +1244,6 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* 트레이딩 통계 */}
         <div className={`${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📋 트레이딩 통계</h3>
           <div className="space-y-3">
@@ -1207,7 +1262,6 @@ export default function Dashboard() {
           </div>
         </div>
         
-        {/* PDF 미리보기 설명 */}
         <div className={`col-span-full ${theme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
           <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📄 PDF 리포트 내용</h3>
           <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
@@ -1220,6 +1274,15 @@ export default function Dashboard() {
             </ul>
           </div>
         </div>
+      </div>
+    )
+  }
+
+  // 테마 로드 전 깜빡임 방지
+  if (!themeLoaded) {
+    return (
+      <div className="min-h-screen bg-[#0a0a14] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-[#00d395] border-t-transparent rounded-full animate-spin"></div>
       </div>
     )
   }
@@ -1250,10 +1313,10 @@ export default function Dashboard() {
               {profile?.plan !== 'free' && <span className="bg-[#00d395] text-black px-2 py-1 rounded text-xs font-bold">{profile?.plan?.toUpperCase()}</span>}
             </div>
             <div className="flex items-center gap-4">
-              {/* 테마 토글 */}
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>
                 <span className="text-sm">☀️</span>
                 <button
+                  type="button"
                   onClick={toggleTheme}
                   className={`w-12 h-6 rounded-full relative transition-colors ${theme === 'dark' ? 'bg-[#00d395]' : 'bg-gray-400'}`}
                 >
@@ -1266,13 +1329,12 @@ export default function Dashboard() {
               </div>
               <span className={currentColors.textSecondary}>{profile?.nickname || user?.email?.split('@')[0]}</span>
               <Link href="/pricing" className="text-sm text-[#00d395] hover:underline">요금제</Link>
-              <button onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className={`text-sm ${currentColors.textSecondary} hover:${currentColors.text}`}>로그아웃</button>
+              <button type="button" onClick={() => supabase.auth.signOut().then(() => router.push('/'))} className={`text-sm ${currentColors.textSecondary} hover:${currentColors.text}`}>로그아웃</button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* 탭 네비게이션 */}
       <div className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
         <div className="max-w-[1600px] mx-auto px-4">
           <div className="flex gap-2 py-3 overflow-x-auto">
@@ -1284,6 +1346,7 @@ export default function Dashboard() {
             ].map(tab => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-5 py-2.5 rounded-xl font-semibold whitespace-nowrap transition ${
                   activeTab === tab.id
@@ -1298,7 +1361,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* 상단 배너 광고 */}
       {bannerAds.length > 0 && activeTab === 'dashboard' && (
         <div className="max-w-[1600px] mx-auto px-4 pt-4">
           {bannerAds.map(ad => <div key={ad.id} className="mb-2"><AdCard ad={ad} size="large" /></div>)}
@@ -1306,7 +1368,6 @@ export default function Dashboard() {
       )}
 
       <div className="max-w-[1600px] mx-auto px-4 py-8">
-        {/* 대시보드 탭 */}
         {activeTab === 'dashboard' && (
           <div className="flex gap-6">
             <main className="flex-1 min-w-0">
@@ -1314,7 +1375,7 @@ export default function Dashboard() {
                 <div className="mb-8">
                   <div className="flex gap-3">
                     <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} placeholder="코인명 입력 (예: doge, shib, matic)" className={`flex-1 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} border rounded-xl px-4 py-3 focus:outline-none focus:border-[#00d395]`} />
-                    <button onClick={handleSearch} disabled={searchLoading} className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold hover:bg-[#00d395]/90 disabled:opacity-50">{searchLoading ? '검색 중...' : '🔍 분석'}</button>
+                    <button type="button" onClick={handleSearch} disabled={searchLoading} className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold hover:bg-[#00d395]/90 disabled:opacity-50">{searchLoading ? '검색 중...' : '🔍 분석'}</button>
                   </div>
                 </div>
               )}
@@ -1368,7 +1429,6 @@ export default function Dashboard() {
               </section>
             </main>
 
-            {/* 사이드바 */}
             <aside className="hidden xl:block w-72 flex-shrink-0">
               <div className="sticky top-24 space-y-6">
                 <div>
@@ -1395,13 +1455,12 @@ export default function Dashboard() {
         {activeTab === 'report' && <ReportTab />}
       </div>
 
-      {/* 모바일용 하단 링크 */}
       {activeTab === 'dashboard' && (
         <div className={`xl:hidden border-t ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'} p-4`}>
           <h3 className={`text-lg font-bold mb-3 ${currentColors.text}`}>📢 소통 채널</h3>
           <div className="grid grid-cols-2 gap-2">
             {ownAds.slice(0, 4).map(ad => (
-              <button key={ad.id} onClick={() => handleAdClick(ad)} className={`bg-gradient-to-r ${ad.bg_color} border ${ad.border_color} rounded-lg p-3 text-left`}>
+              <button key={ad.id} type="button" onClick={() => handleAdClick(ad)} className={`bg-gradient-to-r ${ad.bg_color} border ${ad.border_color} rounded-lg p-3 text-left`}>
                 <span className="text-lg">{ad.icon}</span>
                 <p className="text-sm font-semibold mt-1 text-white">{ad.title}</p>
               </button>
@@ -1410,7 +1469,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 상세 모달 */}
       {showDetail && selectedCoin && (
         <div className={`fixed inset-0 z-50 ${theme === 'dark' ? 'bg-[#0a0a14]' : 'bg-white'}`} style={{ touchAction: 'pan-y' }}>
           <div className={`sticky top-0 ${theme === 'dark' ? 'bg-[#0a0a14] border-white/10' : 'bg-white border-gray-200'} border-b z-10`}>
@@ -1419,7 +1477,7 @@ export default function Dashboard() {
                 <h2 className={`text-xl font-bold ${currentColors.text}`}>{selectedCoin.symbol.toUpperCase()}</h2>
                 <SignalBadge signal={selectedCoin.signal} />
               </div>
-              <button onClick={() => setShowDetail(false)} className={`${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} px-4 py-2 rounded-lg font-semibold ${currentColors.text}`}>✕ 닫기</button>
+              <button type="button" onClick={() => setShowDetail(false)} className={`${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} px-4 py-2 rounded-lg font-semibold ${currentColors.text}`}>✕ 닫기</button>
             </div>
           </div>
           <div className="overflow-y-auto" style={{ height: 'calc(100vh - 70px)', WebkitOverflowScrolling: 'touch' }}>
@@ -1466,33 +1524,50 @@ export default function Dashboard() {
                   <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-6 text-center`}><p className={`${currentColors.textSecondary} mb-3`}>🔒 AI 분석은 PRO 회원 전용입니다</p><Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block">PRO 업그레이드</Link></div>
                 )}
               </div>
-              <button onClick={() => setShowDetail(false)} className={`w-full py-4 ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl font-semibold text-lg ${currentColors.text}`}>닫기</button>
+              <button type="button" onClick={() => setShowDetail(false)} className={`w-full py-4 ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl font-semibold text-lg ${currentColors.text}`}>닫기</button>
             </div>
           </div>
         </div>
       )}
       
-      {/* 슬라이더 스타일 */}
       <style jsx global>{`
+        input[type="range"] {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+        }
         input[type="range"]::-webkit-slider-thumb {
           -webkit-appearance: none;
           appearance: none;
-          width: 24px;
-          height: 24px;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           background: #00d395;
-          cursor: pointer;
-          border: 3px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          cursor: grab;
+          border: 4px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+          margin-top: -12px;
+        }
+        input[type="range"]::-webkit-slider-thumb:active {
+          cursor: grabbing;
+          transform: scale(1.1);
         }
         input[type="range"]::-moz-range-thumb {
-          width: 24px;
-          height: 24px;
+          width: 28px;
+          height: 28px;
           border-radius: 50%;
           background: #00d395;
-          cursor: pointer;
-          border: 3px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          cursor: grab;
+          border: 4px solid white;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+          height: 4px;
+          background: transparent;
+        }
+        input[type="range"]::-moz-range-track {
+          height: 4px;
+          background: transparent;
         }
       `}</style>
     </div>
