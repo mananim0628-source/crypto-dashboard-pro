@@ -81,7 +81,6 @@ type AlertSettings = {
   alert_signal: boolean
   alert_score_change: boolean
   alert_price: boolean
-  telegram_id?: string | null
 }
 
 type PortfolioPosition = {
@@ -110,6 +109,16 @@ type AlertNotification = {
   read: boolean
 }
 
+// 가격 포맷 함수 - 밈코인 지원
+const formatPrice = (price: number): string => {
+  if (price === 0) return '$0'
+  if (price >= 1) return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  if (price >= 0.01) return `$${price.toFixed(4)}`
+  if (price >= 0.0001) return `$${price.toFixed(6)}`
+  if (price >= 0.00000001) return `$${price.toFixed(8)}`
+  return `$${price.toExponential(4)}`
+}
+
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -126,50 +135,40 @@ export default function Dashboard() {
   const [selectedCoin, setSelectedCoin] = useState<AnalyzedCoin | null>(null)
   const [showDetail, setShowDetail] = useState(false)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'alerts' | 'portfolio' | 'report'>('dashboard')
-  
-  // 테마 - 초기값 null로 hydration 문제 해결
   const [theme, setTheme] = useState<'dark' | 'light' | null>(null)
-  
   const [alertSettings, setAlertSettings] = useState<AlertSettings | null>(null)
   const [portfolioPositions, setPortfolioPositions] = useState<PortfolioPosition[]>([])
   const [settingsSaving, setSettingsSaving] = useState(false)
-  
-  // 알림 목록
   const [notifications, setNotifications] = useState<AlertNotification[]>([])
   const [showNotifications, setShowNotifications] = useState(false)
   
-  // 포트폴리오 입력 상태
   const [positionCoin, setPositionCoin] = useState('BTC')
   const [positionType, setPositionType] = useState<'LONG' | 'SHORT'>('LONG')
   const [entryValue, setEntryValue] = useState('')
   const [targetValue, setTargetValue] = useState('')
   const [stopValue, setStopValue] = useState('')
   
-  // 포트폴리오 코인 검색
   const [portfolioCoinSearch, setPortfolioCoinSearch] = useState('')
   const [portfolioSearchResults, setPortfolioSearchResults] = useState<string[]>([])
   const [portfolioSearchLoading, setPortfolioSearchLoading] = useState(false)
   const [showPortfolioDropdown, setShowPortfolioDropdown] = useState(false)
   const portfolioDropdownRef = useRef<HTMLDivElement>(null)
   
-  // 임계점 상태
   const [sliderValue, setSliderValue] = useState(90)
   const [inputValue, setInputValue] = useState('90')
   
-  // 알림 코인 검색
   const [alertCoinSearch, setAlertCoinSearch] = useState('')
   const [alertSearchResults, setAlertSearchResults] = useState<string[]>([])
   const [alertSearchLoading, setAlertSearchLoading] = useState(false)
   
-  // 텔레그램 ID
   const [telegramId, setTelegramId] = useState('')
+  const notificationRef = useRef<HTMLDivElement>(null)
 
-  const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE']
+  const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE', 'PEPE', 'BONK', 'FLOKI', 'WIF']
 
   const router = useRouter()
   const supabase = createClientComponentClient()
 
-  // 현재 테마 (null이면 dark 기본값)
   const currentTheme = theme || 'dark'
   
   const colors = {
@@ -222,47 +221,33 @@ export default function Dashboard() {
     return analyzed
   }
 
-  // 테마 초기화 - localStorage에서 먼저 로드
   useEffect(() => {
     const saved = localStorage.getItem('dashboard-theme')
-    if (saved === 'light') {
-      setTheme('light')
-    } else {
-      setTheme('dark')
-      localStorage.setItem('dashboard-theme', 'dark')
-    }
+    if (saved === 'light') setTheme('light')
+    else { setTheme('dark'); localStorage.setItem('dashboard-theme', 'dark') }
   }, [])
 
-  // 포트폴리오 드롭다운 외부 클릭
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (portfolioDropdownRef.current && !portfolioDropdownRef.current.contains(event.target as Node)) {
-        setShowPortfolioDropdown(false)
-      }
+      if (portfolioDropdownRef.current && !portfolioDropdownRef.current.contains(event.target as Node)) setShowPortfolioDropdown(false)
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) setShowNotifications(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // 모달 스크롤 방지
   useEffect(() => {
     document.body.style.overflow = showDetail ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [showDetail])
 
-  // 메인 초기화
   useEffect(() => {
     let mounted = true
 
     const init = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session?.user) {
-          router.push('/login')
-          return
-        }
-
+        if (!session?.user) { router.push('/login'); return }
         if (!mounted) return
         setUser(session.user)
 
@@ -303,7 +288,6 @@ export default function Dashboard() {
               setAlertSettings(alertData)
               setSliderValue(alertData.score_threshold)
               setInputValue(String(alertData.score_threshold))
-              if (alertData.telegram_id) setTelegramId(alertData.telegram_id)
             } else {
               setAlertSettings({ user_id: session.user.id, selected_coins: ['BTC', 'ETH'], score_threshold: 90, time_morning: true, time_afternoon: true, time_evening: true, time_night: false, alert_signal: true, alert_score_change: true, alert_price: true })
             }
@@ -315,13 +299,9 @@ export default function Dashboard() {
           if (mounted && portfolioData) setPortfolioPositions(portfolioData)
         } catch (e) {}
 
-        // DB에서 테마 로드 (있으면 덮어쓰기)
         try {
           const { data: prefData } = await supabase.from('user_preferences').select('*').eq('user_id', session.user.id).single()
-          if (mounted && prefData?.theme) { 
-            setTheme(prefData.theme)
-            localStorage.setItem('dashboard-theme', prefData.theme) 
-          }
+          if (mounted && prefData?.theme) { setTheme(prefData.theme); localStorage.setItem('dashboard-theme', prefData.theme) }
         } catch (e) {}
 
       } catch (error) {
@@ -339,52 +319,30 @@ export default function Dashboard() {
     return () => { mounted = false; subscription.unsubscribe() }
   }, [supabase, router])
 
-  // 알림 체크 - 설정된 코인 중 임계점 이상인 코인 찾기
   useEffect(() => {
     if (!alertSettings || coreCoins.length === 0) return
-    
     const allAnalyzedCoins = [...coreCoins, ...topGainers]
     const newNotifications: AlertNotification[] = []
     
     alertSettings.selected_coins.forEach(symbol => {
       const coin = allAnalyzedCoins.find(c => c.symbol.toUpperCase() === symbol.toUpperCase())
       if (coin && coin.scores.total >= alertSettings.score_threshold) {
-        // 이미 같은 알림이 있는지 체크
         const exists = notifications.some(n => n.coin === symbol && n.type === 'score')
         if (!exists) {
-          newNotifications.push({
-            id: `${symbol}-${Date.now()}`,
-            coin: symbol,
-            type: 'score',
-            message: `${symbol} 점수 ${coin.scores.total}/140 - ${alertSettings.score_threshold}점 이상 달성!`,
-            time: new Date(),
-            read: false
-          })
+          newNotifications.push({ id: `${symbol}-${Date.now()}`, coin: symbol, type: 'score', message: `${symbol} 점수 ${coin.scores.total}/140 - ${alertSettings.score_threshold}점 이상!`, time: new Date(), read: false })
         }
-        
-        // 시그널 알림
         if (alertSettings.alert_signal && (coin.signal === 'strong_buy' || coin.signal === 'buy')) {
           const signalExists = notifications.some(n => n.coin === symbol && n.type === 'signal')
           if (!signalExists) {
-            newNotifications.push({
-              id: `${symbol}-signal-${Date.now()}`,
-              coin: symbol,
-              type: 'signal',
-              message: `${symbol} ${coin.signal === 'strong_buy' ? '🚀 강력 매수' : '📈 매수'} 시그널!`,
-              time: new Date(),
-              read: false
-            })
+            newNotifications.push({ id: `${symbol}-signal-${Date.now()}`, coin: symbol, type: 'signal', message: `${symbol} ${coin.signal === 'strong_buy' ? '🚀 강력 매수' : '📈 매수'} 시그널!`, time: new Date(), read: false })
           }
         }
       }
     })
     
-    if (newNotifications.length > 0) {
-      setNotifications(prev => [...newNotifications, ...prev].slice(0, 50))
-    }
+    if (newNotifications.length > 0) setNotifications(prev => [...newNotifications, ...prev].slice(0, 50))
   }, [alertSettings, coreCoins, topGainers])
 
-  // 자동 새로고침
   useEffect(() => {
     if (!user) return
     const interval = setInterval(async () => {
@@ -404,13 +362,11 @@ export default function Dashboard() {
     return () => clearInterval(interval)
   }, [user, profile?.plan])
 
-  // 카운트다운
   useEffect(() => {
     const timer = setInterval(() => setCountdown(prev => prev > 0 ? prev - 1 : 120), 1000)
     return () => clearInterval(timer)
   }, [])
 
-  // 알림 코인 API 검색
   const searchAlertCoin = async (query: string) => {
     if (!query.trim()) { setAlertSearchResults([]); return }
     const localResults = allCoins.filter(coin => coin.toLowerCase().includes(query.toLowerCase()))
@@ -425,7 +381,6 @@ export default function Dashboard() {
     setAlertSearchLoading(false)
   }
 
-  // 포트폴리오 코인 API 검색
   const searchPortfolioCoin = async (query: string) => {
     if (!query.trim()) { setPortfolioSearchResults(allCoins); return }
     const localResults = allCoins.filter(coin => coin.toLowerCase().includes(query.toLowerCase()))
@@ -443,11 +398,11 @@ export default function Dashboard() {
   const saveAlertSettings = async () => {
     if (!user || !alertSettings) return
     setSettingsSaving(true)
+    // telegram_id 제외하고 저장 (DB에 컬럼 없음)
     const settingsToSave = { 
       ...alertSettings, 
       score_threshold: sliderValue, 
       user_id: user.id, 
-      telegram_id: telegramId || null,
       updated_at: new Date().toISOString() 
     }
     const { error } = await supabase.from('alert_settings').upsert(settingsToSave)
@@ -473,9 +428,7 @@ export default function Dashboard() {
     if (error) alert('포지션 추가 실패')
     else if (data) {
       setPortfolioPositions([data, ...portfolioPositions])
-      setEntryValue('')
-      setTargetValue('')
-      setStopValue('')
+      setEntryValue(''); setTargetValue(''); setStopValue('')
       alert('✅ 포지션 추가됨')
     }
   }
@@ -484,10 +437,7 @@ export default function Dashboard() {
     if (!confirm(`${position.coin_symbol} ${position.position_type} 포지션을 삭제하시겠습니까?`)) return
     const { error } = await supabase.from('portfolio_positions').delete().eq('id', position.id)
     if (error) alert('삭제 실패: ' + error.message)
-    else {
-      setPortfolioPositions(portfolioPositions.filter(p => p.id !== position.id))
-      alert('✅ 포지션이 삭제되었습니다')
-    }
+    else { setPortfolioPositions(portfolioPositions.filter(p => p.id !== position.id)); alert('✅ 삭제됨') }
   }
 
   const toggleTheme = async () => {
@@ -516,8 +466,121 @@ export default function Dashboard() {
     const now = new Date()
     const dateStr = now.toLocaleDateString('ko-KR')
     const timeStr = now.toLocaleTimeString('ko-KR')
+    const longCount = portfolioPositions.filter(p => p.position_type === 'LONG').length
+    const shortCount = portfolioPositions.filter(p => p.position_type === 'SHORT').length
     
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>크립토 대시보드 PRO - 트레이딩 리포트</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Malgun Gothic',sans-serif;padding:40px;background:#fff;color:#333;line-height:1.6}.header{text-align:center;border-bottom:3px solid #00d395;padding-bottom:30px;margin-bottom:40px}.header h1{color:#00d395;font-size:28px;margin-bottom:10px}.section{margin-bottom:40px}.section h2{color:#333;font-size:18px;border-left:4px solid #00d395;padding-left:15px;margin-bottom:20px}.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.stat-card{background:#f8f9fa;padding:20px;border-radius:12px;text-align:center}.stat-value{font-size:28px;font-weight:bold;color:#00d395}.stat-value.negative{color:#ff6b6b}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f8f9fa;padding:12px 10px;text-align:left;border-bottom:2px solid #dee2e6}td{padding:12px 10px;border-bottom:1px solid #eee}.long{color:#00d395}.short{color:#ff6b6b}.badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px}.summary-box{background:linear-gradient(135deg,#00d395,#00b383);color:white;padding:25px;border-radius:12px;margin-bottom:30px}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;text-align:center}.summary-item .value{font-size:24px;font-weight:bold}.footer{text-align:center;margin-top:50px;padding-top:20px;border-top:1px solid #eee;color:#999;font-size:11px}</style></head><body><div class="header"><h1>🚀 크립토 대시보드 PRO</h1><p>트레이딩 리포트 - ${dateStr} ${timeStr}</p><p>사용자: ${profile?.nickname || user?.email?.split('@')[0]} (${profile?.plan?.toUpperCase()})</p></div><div class="summary-box"><h3>📊 트레이딩 성과</h3><div class="summary-grid"><div class="summary-item"><div class="value">${stats.total}</div><div>총 포지션</div></div><div class="summary-item"><div class="value">${stats.winRate}%</div><div>승률</div></div><div class="summary-item"><div class="value">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div>누적 수익률</div></div></div></div><div class="section"><h2>📈 성과 지표</h2><div class="stats-grid"><div class="stat-card"><div class="stat-value">${stats.active}</div><div>활성</div></div><div class="stat-card"><div class="stat-value">${stats.closed}</div><div>종료</div></div><div class="stat-card"><div class="stat-value long">${stats.wins}</div><div>수익</div></div><div class="stat-card"><div class="stat-value negative">${stats.losses}</div><div>손실</div></div></div></div><div class="section"><h2>📋 활성 포지션</h2><table><thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>목표가</th><th>손절가</th><th>손익비</th></tr></thead><tbody>${portfolioPositions.filter(p=>p.status==='active').map(p=>{const rr=p.position_type==='LONG'?((p.target_price-p.entry_price)/(p.entry_price-p.stop_loss)).toFixed(2):((p.entry_price-p.target_price)/(p.stop_loss-p.entry_price)).toFixed(2);return`<tr><td><strong>${p.coin_symbol}</strong></td><td class="${p.position_type.toLowerCase()}">${p.position_type}</td><td>$${p.entry_price.toLocaleString()}</td><td class="long">$${p.target_price.toLocaleString()}</td><td class="short">$${p.stop_loss.toLocaleString()}</td><td>1:${rr}</td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px">없음</td></tr>'}</tbody></table></div><div class="section"><h2>📊 종료 포지션</h2><table><thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>종료가</th><th>수익률</th></tr></thead><tbody>${portfolioPositions.filter(p=>p.status==='closed').map(p=>{const pnl=p.exit_price?(p.position_type==='LONG'?((p.exit_price-p.entry_price)/p.entry_price*100):((p.entry_price-p.exit_price)/p.entry_price*100)):0;return`<tr><td><strong>${p.coin_symbol}</strong></td><td class="${p.position_type.toLowerCase()}">${p.position_type}</td><td>$${p.entry_price.toLocaleString()}</td><td>$${p.exit_price?.toLocaleString()||'-'}</td><td class="${pnl>=0?'long':'short'}">${pnl>=0?'+':''}${pnl.toFixed(2)}%</td></tr>`}).join('')||'<tr><td colspan="5" style="text-align:center;padding:30px">없음</td></tr>'}</tbody></table></div><div class="footer"><p>© 2025 크립토 대시보드 PRO</p></div></body></html>`
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>크립토 대시보드 PRO - 트레이딩 리포트</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; background: #fff; color: #333; line-height: 1.6; }
+    .header { text-align: center; border-bottom: 3px solid #00d395; padding-bottom: 30px; margin-bottom: 40px; }
+    .header h1 { color: #00d395; font-size: 28px; margin-bottom: 10px; }
+    .header .subtitle { color: #666; font-size: 14px; }
+    .header .date { color: #999; font-size: 12px; margin-top: 5px; }
+    .section { margin-bottom: 40px; page-break-inside: avoid; }
+    .section h2 { color: #333; font-size: 18px; border-left: 4px solid #00d395; padding-left: 15px; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+    .stat-card { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #dee2e6; }
+    .stat-value { font-size: 28px; font-weight: bold; color: #00d395; }
+    .stat-value.negative { color: #ff6b6b; }
+    .stat-label { color: #666; font-size: 12px; margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+    th { background: #f8f9fa; color: #333; font-weight: 600; padding: 12px 10px; text-align: left; border-bottom: 2px solid #dee2e6; }
+    td { padding: 12px 10px; border-bottom: 1px solid #eee; }
+    tr:hover { background: #f8f9fa; }
+    .long { color: #00d395; font-weight: bold; }
+    .short { color: #ff6b6b; font-weight: bold; }
+    .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
+    .badge-long { background: rgba(0,211,149,0.1); color: #00d395; }
+    .badge-short { background: rgba(255,107,107,0.1); color: #ff6b6b; }
+    .summary-box { background: linear-gradient(135deg, #00d395 0%, #00b383 100%); color: white; padding: 25px; border-radius: 12px; margin-bottom: 30px; }
+    .summary-box h3 { font-size: 16px; margin-bottom: 15px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+    .summary-item { text-align: center; }
+    .summary-item .value { font-size: 24px; font-weight: bold; }
+    .summary-item .label { font-size: 11px; opacity: 0.9; }
+    .analysis-section { background: #f8f9fa; padding: 20px; border-radius: 12px; margin-top: 20px; }
+    .analysis-section h4 { color: #333; margin-bottom: 15px; font-size: 14px; }
+    .analysis-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+    .analysis-item:last-child { border-bottom: none; }
+    .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #eee; color: #999; font-size: 11px; }
+    @media print { body { padding: 20px; } .section { page-break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚀 크립토 대시보드 PRO</h1>
+    <p class="subtitle">AI 기반 암호화폐 트레이딩 리포트</p>
+    <p class="date">생성일시: ${dateStr} ${timeStr}</p>
+    <p class="date">사용자: ${profile?.nickname || user?.email?.split('@')[0] || 'Unknown'} (${profile?.plan?.toUpperCase() || 'FREE'})</p>
+  </div>
+
+  <div class="summary-box">
+    <h3>📊 트레이딩 성과 요약</h3>
+    <div class="summary-grid">
+      <div class="summary-item"><div class="value">${stats.total}</div><div class="label">총 포지션</div></div>
+      <div class="summary-item"><div class="value">${stats.active}</div><div class="label">활성</div></div>
+      <div class="summary-item"><div class="value">${stats.winRate}%</div><div class="label">승률</div></div>
+      <div class="summary-item"><div class="value">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div class="label">누적 수익률</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📈 성과 지표</h2>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-value">${stats.active}</div><div class="stat-label">활성 포지션</div></div>
+      <div class="stat-card"><div class="stat-value">${stats.closed}</div><div class="stat-label">종료 포지션</div></div>
+      <div class="stat-card"><div class="stat-value long">${stats.wins}</div><div class="stat-label">수익 거래</div></div>
+      <div class="stat-card"><div class="stat-value negative">${stats.losses}</div><div class="stat-label">손실 거래</div></div>
+    </div>
+    <div class="analysis-section">
+      <h4>📊 상세 분석</h4>
+      <div class="analysis-item"><span>총 거래 횟수</span><strong>${stats.total}회</strong></div>
+      <div class="analysis-item"><span>승률</span><strong class="long">${stats.winRate}%</strong></div>
+      <div class="analysis-item"><span>롱 포지션</span><strong>${longCount}개 (${stats.total > 0 ? ((longCount/stats.total)*100).toFixed(0) : 0}%)</strong></div>
+      <div class="analysis-item"><span>숏 포지션</span><strong>${shortCount}개 (${stats.total > 0 ? ((shortCount/stats.total)*100).toFixed(0) : 0}%)</strong></div>
+      <div class="analysis-item"><span>평균 손익비 (목표)</span><strong>1:1.5</strong></div>
+      <div class="analysis-item"><span>누적 수익률</span><strong class="${parseFloat(stats.totalPnL)>=0?'long':'short'}">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</strong></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>📋 활성 포지션 상세</h2>
+    <table>
+      <thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>목표가</th><th>손절가</th><th>예상 손익비</th><th>진입일</th></tr></thead>
+      <tbody>
+        ${portfolioPositions.filter(p => p.status === 'active').map(p => {
+          const rr = p.position_type === 'LONG' ? ((p.target_price - p.entry_price) / (p.entry_price - p.stop_loss)).toFixed(2) : ((p.entry_price - p.target_price) / (p.stop_loss - p.entry_price)).toFixed(2)
+          return `<tr><td><strong>${p.coin_symbol}</strong></td><td><span class="badge badge-${p.position_type.toLowerCase()}">${p.position_type}</span></td><td>$${p.entry_price.toLocaleString()}</td><td class="long">$${p.target_price.toLocaleString()}</td><td class="short">$${p.stop_loss.toLocaleString()}</td><td>1:${rr}</td><td>${new Date(p.entry_date).toLocaleDateString('ko-KR')}</td></tr>`
+        }).join('') || '<tr><td colspan="7" style="text-align:center;color:#999;padding:30px;">활성 포지션 없음</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>📊 종료된 포지션</h2>
+    <table>
+      <thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>종료가</th><th>수익률</th><th>결과</th></tr></thead>
+      <tbody>
+        ${portfolioPositions.filter(p => p.status === 'closed').map(p => {
+          const pnl = p.exit_price ? (p.position_type === 'LONG' ? ((p.exit_price - p.entry_price) / p.entry_price * 100) : ((p.entry_price - p.exit_price) / p.entry_price * 100)) : 0
+          return `<tr><td><strong>${p.coin_symbol}</strong></td><td><span class="badge badge-${p.position_type.toLowerCase()}">${p.position_type}</span></td><td>$${p.entry_price.toLocaleString()}</td><td>$${p.exit_price?.toLocaleString() || '-'}</td><td class="${pnl>=0?'long':'short'}">${pnl>=0?'+':''}${pnl.toFixed(2)}%</td><td><span class="badge ${pnl>=0?'badge-long':'badge-short'}">${pnl>=0?'수익':'손실'}</span></td></tr>`
+        }).join('') || '<tr><td colspan="6" style="text-align:center;color:#999;padding:30px;">종료된 포지션 없음</td></tr>'}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>본 리포트는 크립토 대시보드 PRO에서 자동 생성되었습니다.</p>
+    <p>투자에 대한 최종 결정과 책임은 투자자 본인에게 있습니다.</p>
+    <p style="margin-top:10px;">© 2025 크립토 대시보드 PRO. All rights reserved.</p>
+  </div>
+</body>
+</html>`
     
     const win = window.open('', '_blank')
     if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
@@ -553,30 +616,10 @@ export default function Dashboard() {
     setSearchLoading(false)
   }
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseInt(e.target.value)
-    setSliderValue(val)
-    setInputValue(String(val))
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value)
-  }
-
-  const handleInputBlur = () => {
-    const num = parseInt(inputValue)
-    if (isNaN(num)) setInputValue(String(sliderValue))
-    else {
-      const clamped = Math.min(130, Math.max(50, num))
-      setSliderValue(clamped)
-      setInputValue(String(clamped))
-    }
-  }
-
-  const markAllRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })))
-  }
-
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => { const val = parseInt(e.target.value); setSliderValue(val); setInputValue(String(val)) }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => { setInputValue(e.target.value) }
+  const handleInputBlur = () => { const num = parseInt(inputValue); if (isNaN(num)) setInputValue(String(sliderValue)); else { const clamped = Math.min(130, Math.max(50, num)); setSliderValue(clamped); setInputValue(String(clamped)) } }
+  const markAllRead = () => { setNotifications(notifications.map(n => ({ ...n, read: true }))) }
   const unreadCount = notifications.filter(n => !n.read).length
 
   const SignalBadge = ({ signal }: { signal: string }) => {
@@ -618,12 +661,12 @@ export default function Dashboard() {
           <div><div className="flex items-center gap-2"><span className={`text-xl font-bold ${currentColors.text}`}>{coin.symbol.toUpperCase()}</span><span className={`text-xs px-2 py-0.5 rounded ${coin.scores.total >= 95 ? 'bg-[#00d395]/20 text-[#00d395]' : coin.scores.total >= 70 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{coin.scores.total}/140</span></div><p className={currentColors.textSecondary + ' text-sm'}>{coin.name}</p></div>
           <SignalBadge signal={coin.signal} />
         </div>
-        <div className="mb-4"><p className="text-2xl font-bold text-[#00d395]">${coin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p><p className={`text-sm ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>{coin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.price_change_percentage_24h || 0).toFixed(2)}%</p></div>
+        <div className="mb-4"><p className="text-2xl font-bold text-[#00d395]">{formatPrice(coin.current_price)}</p><p className={`text-sm ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>{coin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.price_change_percentage_24h || 0).toFixed(2)}%</p></div>
         {isPro ? (
           <div className={`${currentTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-3 space-y-2`}>
-            <div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>진입가</span><span className="text-[#00d395] font-semibold">${coin.entry_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span></div>
-            <div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>목표가</span><span className="text-blue-400 font-semibold">${coin.target_price.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span></div>
-            <div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>손절가</span><span className="text-[#ff6b6b] font-semibold">${coin.stop_loss.toLocaleString(undefined, { maximumFractionDigits: 4 })}</span></div>
+            <div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>진입가</span><span className="text-[#00d395] font-semibold">{formatPrice(coin.entry_price)}</span></div>
+            <div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>목표가</span><span className="text-blue-400 font-semibold">{formatPrice(coin.target_price)}</span></div>
+            <div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>손절가</span><span className="text-[#ff6b6b] font-semibold">{formatPrice(coin.stop_loss)}</span></div>
             <div className={`flex justify-between pt-2 border-t ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><span className={currentColors.textSecondary + ' text-sm'}>손익비</span><span className="text-yellow-400 font-bold">{coin.risk_reward}</span></div>
           </div>
         ) : (<div className={`${currentTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}><p className={currentColors.textSecondary + ' text-sm'}>🔒 PRO 전용</p></div>)}
@@ -632,7 +675,6 @@ export default function Dashboard() {
     )
   }
 
-  // 테마 로딩 중이면 로딩 표시
   if (theme === null || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0a0a14]">
@@ -650,7 +692,6 @@ export default function Dashboard() {
 
   return (
     <div className={`min-h-screen ${currentTheme === 'dark' ? 'bg-[#0a0a14]' : 'bg-gray-100'} ${currentColors.text}`}>
-      {/* 헤더 */}
       <header className={`border-b ${currentTheme === 'dark' ? 'border-white/10 bg-[#0a0a14]/95' : 'border-gray-200 bg-white/95'} sticky top-0 backdrop-blur z-40`}>
         <div className="max-w-[1600px] mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
@@ -659,53 +700,6 @@ export default function Dashboard() {
               {profile?.plan !== 'free' && <span className="bg-[#00d395] text-black px-2 py-1 rounded text-xs font-bold">{profile?.plan?.toUpperCase()}</span>}
             </div>
             <div className="flex items-center gap-4">
-              {/* 알림 벨 */}
-              <div className="relative">
-                <button 
-                  type="button" 
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className={`relative p-2 rounded-full ${currentTheme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}
-                >
-                  🔔
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 bg-[#ff6b6b] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                      {unreadCount > 9 ? '9+' : unreadCount}
-                    </span>
-                  )}
-                </button>
-                
-                {showNotifications && (
-                  <div className={`absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl border shadow-2xl z-50 ${currentTheme === 'dark' ? 'bg-[#1a1a2e] border-white/10' : 'bg-white border-gray-200'}`}>
-                    <div className="p-3 border-b flex justify-between items-center">
-                      <span className={`font-bold ${currentColors.text}`}>🔔 알림</span>
-                      {notifications.length > 0 && (
-                        <button type="button" onClick={markAllRead} className="text-xs text-[#00d395]">모두 읽음</button>
-                      )}
-                    </div>
-                    {notifications.length === 0 ? (
-                      <div className={`p-6 text-center ${currentColors.textSecondary}`}>
-                        <p>알림이 없습니다</p>
-                        <p className="text-xs mt-2">알림 설정에서 조건을 설정하세요</p>
-                      </div>
-                    ) : (
-                      notifications.slice(0, 10).map(notif => (
-                        <div key={notif.id} className={`p-3 border-b ${currentTheme === 'dark' ? 'border-white/5' : 'border-gray-100'} ${!notif.read ? (currentTheme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50') : ''}`}>
-                          <div className="flex items-start gap-2">
-                            <span>{notif.type === 'signal' ? '🚀' : notif.type === 'score' ? '📊' : '💰'}</span>
-                            <div className="flex-1">
-                              <p className={`text-sm ${currentColors.text}`}>{notif.message}</p>
-                              <p className={`text-xs ${currentColors.textSecondary} mt-1`}>
-                                {notif.time.toLocaleTimeString('ko-KR')}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                )}
-              </div>
-              
               <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${currentTheme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>
                 <span className="text-sm">☀️</span>
                 <button type="button" onClick={toggleTheme} className={`w-12 h-6 rounded-full relative ${currentTheme === 'dark' ? 'bg-[#00d395]' : 'bg-gray-400'}`}><div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${currentTheme === 'dark' ? 'left-7' : 'left-1'}`} /></button>
@@ -715,28 +709,49 @@ export default function Dashboard() {
               <span className={currentColors.textSecondary}>{profile?.nickname || user?.email?.split('@')[0]}</span>
               <Link href="/pricing" className="text-sm text-[#00d395]">요금제</Link>
               <button type="button" onClick={() => supabase.auth.signOut()} className={`text-sm ${currentColors.textSecondary}`}>로그아웃</button>
+              
+              {/* 알림 벨 - 로그아웃 오른쪽 */}
+              <div className="relative" ref={notificationRef}>
+                <button type="button" onClick={() => setShowNotifications(!showNotifications)} className={`relative p-2 rounded-full ${currentTheme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}>
+                  🔔
+                  {unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-[#ff6b6b] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}
+                </button>
+                {showNotifications && (
+                  <div className={`absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl border shadow-2xl z-50 ${currentTheme === 'dark' ? 'bg-[#1a1a2e] border-white/10' : 'bg-white border-gray-200'}`}>
+                    <div className="p-3 border-b flex justify-between items-center">
+                      <span className={`font-bold ${currentColors.text}`}>🔔 알림</span>
+                      {notifications.length > 0 && <button type="button" onClick={markAllRead} className="text-xs text-[#00d395]">모두 읽음</button>}
+                    </div>
+                    {notifications.length === 0 ? (
+                      <div className={`p-6 text-center ${currentColors.textSecondary}`}><p>알림이 없습니다</p><p className="text-xs mt-2">알림 설정에서 조건을 설정하세요</p></div>
+                    ) : (
+                      notifications.slice(0, 10).map(notif => (
+                        <div key={notif.id} className={`p-3 border-b ${currentTheme === 'dark' ? 'border-white/5' : 'border-gray-100'} ${!notif.read ? (currentTheme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50') : ''}`}>
+                          <div className="flex items-start gap-2">
+                            <span>{notif.type === 'signal' ? '🚀' : notif.type === 'score' ? '📊' : '💰'}</span>
+                            <div className="flex-1"><p className={`text-sm ${currentColors.text}`}>{notif.message}</p><p className={`text-xs ${currentColors.textSecondary} mt-1`}>{notif.time.toLocaleTimeString('ko-KR')}</p></div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* 탭 */}
       <div className={`border-b ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
         <div className="max-w-[1600px] mx-auto px-4">
           <div className="flex gap-2 py-3">
-            {[
-              { id: 'dashboard', label: '📊 대시보드' }, 
-              { id: 'alerts', label: `🔔 알림 설정 ${unreadCount > 0 ? `(${unreadCount})` : ''}` }, 
-              { id: 'portfolio', label: '💼 포트폴리오' }, 
-              { id: 'report', label: '📈 리포트' }
-            ].map(tab => (
+            {[{ id: 'dashboard', label: '📊 대시보드' }, { id: 'alerts', label: `🔔 알림 설정 ${unreadCount > 0 ? `(${unreadCount})` : ''}` }, { id: 'portfolio', label: '💼 포트폴리오' }, { id: 'report', label: '📈 리포트' }].map(tab => (
               <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl font-semibold transition ${activeTab === tab.id ? 'bg-[#00d395] text-black' : `${currentTheme === 'dark' ? 'bg-white/5 text-white/70 hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}`}>{tab.label}</button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* 메인 */}
       <div className="max-w-[1600px] mx-auto px-4 py-8">
         {activeTab === 'dashboard' && (
           <div className="flex gap-6">
@@ -760,61 +775,27 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 알림 설정 */}
         {activeTab === 'alerts' && alertSettings && (
           <div className="space-y-6">
-            {/* 알림 작동 방식 안내 */}
             <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-2xl p-6">
               <h3 className={`text-lg font-bold mb-3 ${currentColors.text}`}>📢 알림 작동 방식</h3>
               <div className={`space-y-2 ${currentColors.textSecondary} text-sm`}>
-                <p>✅ <strong className={currentColors.text}>대시보드 알림:</strong> 설정한 코인이 임계점 이상이 되면 상단 🔔 벨 아이콘에 알림이 표시됩니다.</p>
-                <p>✅ <strong className={currentColors.text}>실시간 모니터링:</strong> 2분마다 자동으로 데이터를 갱신하며, 조건 충족 시 즉시 알림이 생성됩니다.</p>
-                <p>🔜 <strong className={currentColors.text}>텔레그램 알림 (예정):</strong> 텔레그램 ID를 등록하면 봇을 통해 실시간 알림을 받을 수 있습니다.</p>
+                <p>✅ <strong className={currentColors.text}>대시보드 알림:</strong> 설정한 코인이 임계점 이상이면 상단 🔔 벨에 알림 표시</p>
+                <p>✅ <strong className={currentColors.text}>실시간 모니터링:</strong> 2분마다 자동 갱신, 조건 충족 시 즉시 알림</p>
+                <p>📱 <strong className={currentColors.text}>텔레그램:</strong> 추후 지원 예정</p>
               </div>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* 텔레그램 연동 */}
-              <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📱 텔레그램 연동 (선택)</h3>
-                <p className={`text-sm ${currentColors.textSecondary} mb-4`}>
-                  텔레그램 알림을 받으려면 @CryptoDashboardBot 을 시작한 후 ID를 입력하세요.
-                </p>
-                <input 
-                  type="text" 
-                  placeholder="텔레그램 사용자 ID (숫자)" 
-                  value={telegramId}
-                  onChange={(e) => setTelegramId(e.target.value)}
-                  className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} 
-                />
-                <p className={`text-xs ${currentColors.textSecondary} mt-2`}>
-                  * 텔레그램에서 @userinfobot 에게 메시지를 보내면 ID를 확인할 수 있습니다.
-                </p>
-              </div>
-              
-              {/* 코인 선택 */}
               <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
                 <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🪙 코인 선택</h3>
                 <div className="mb-4">
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="코인 검색 (예: PEPE, FLOKI...)" 
-                      value={alertCoinSearch}
-                      onChange={(e) => { setAlertCoinSearch(e.target.value); searchAlertCoin(e.target.value) }}
-                      className={`flex-1 p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} 
-                    />
-                    {alertSearchLoading && <span className="flex items-center text-[#00d395]">검색중...</span>}
-                  </div>
+                  <input type="text" placeholder="코인 검색 (예: PEPE, FLOKI...)" value={alertCoinSearch} onChange={(e) => { setAlertCoinSearch(e.target.value); searchAlertCoin(e.target.value) }} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} />
                   {alertCoinSearch && alertSearchResults.length > 0 && (
                     <div className={`mt-2 p-2 rounded-xl ${currentTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
-                      <p className={`text-xs ${currentColors.textSecondary} mb-2`}>검색 결과 (클릭하여 추가)</p>
                       <div className="flex flex-wrap gap-2">
-                        {alertSearchResults.map(coin => (
-                          <button key={coin} type="button" onClick={() => {
-                            if (!alertSettings.selected_coins.includes(coin)) setAlertSettings({ ...alertSettings, selected_coins: [...alertSettings.selected_coins, coin] })
-                            setAlertCoinSearch(''); setAlertSearchResults([])
-                          }} className="px-3 py-1 rounded-full text-sm bg-[#00d395]/20 text-[#00d395] hover:bg-[#00d395]/30">+ {coin}</button>
+                        {alertSearchResults.slice(0, 10).map(coin => (
+                          <button key={coin} type="button" onClick={() => { if (!alertSettings.selected_coins.includes(coin)) setAlertSettings({ ...alertSettings, selected_coins: [...alertSettings.selected_coins, coin] }); setAlertCoinSearch(''); setAlertSearchResults([]) }} className="px-3 py-1 rounded-full text-sm bg-[#00d395]/20 text-[#00d395] hover:bg-[#00d395]/30">+ {coin}</button>
                         ))}
                       </div>
                     </div>
@@ -828,10 +809,9 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              {/* 점수 임계값 */}
               <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
                 <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🎯 점수 임계값</h3>
-                <p className={`text-sm ${currentColors.textSecondary} mb-4`}>선택한 코인이 이 점수 이상이면 알림을 받습니다.</p>
+                <p className={`text-sm ${currentColors.textSecondary} mb-4`}>선택한 코인이 이 점수 이상이면 알림</p>
                 <div className="flex items-center gap-4 mb-4">
                   <input type="range" min="50" max="130" value={sliderValue} onChange={handleSliderChange} className="flex-1 h-3 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #00d395 ${((sliderValue - 50) / 80) * 100}%, ${currentTheme === 'dark' ? '#333' : '#ddd'} ${((sliderValue - 50) / 80) * 100}%)` }} />
                   <span className="bg-[#00d395] text-black px-4 py-2 rounded-xl font-bold text-xl min-w-[100px] text-center">{sliderValue}/140</span>
@@ -843,7 +823,6 @@ export default function Dashboard() {
                 </div>
               </div>
               
-              {/* 시간대 & 알림 유형 */}
               <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
                 <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>⏰ 시간대 & 📬 알림 유형</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -861,32 +840,23 @@ export default function Dashboard() {
                   ))}
                 </div>
               </div>
-            </div>
-            
-            <button type="button" onClick={saveAlertSettings} disabled={settingsSaving} className="w-full bg-[#00d395] text-black py-4 rounded-xl font-bold text-lg">{settingsSaving ? '저장 중...' : '💾 설정 저장'}</button>
-            
-            {/* 현재 조건 충족 코인 */}
-            {alertSettings.selected_coins.length > 0 && (
+              
               <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📊 현재 조건 충족 코인</h3>
-                <div className="space-y-2">
+                <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📊 현재 조건 충족</h3>
+                <div className="space-y-2 max-h-[200px] overflow-y-auto">
                   {(() => {
                     const allAnalyzed = [...coreCoins, ...topGainers]
                     const matching = alertSettings.selected_coins.filter(symbol => {
                       const coin = allAnalyzed.find(c => c.symbol.toUpperCase() === symbol.toUpperCase())
                       return coin && coin.scores.total >= sliderValue
                     })
-                    
-                    if (matching.length === 0) {
-                      return <p className={currentColors.textSecondary}>임계점({sliderValue}점) 이상인 코인이 없습니다.</p>
-                    }
-                    
+                    if (matching.length === 0) return <p className={currentColors.textSecondary}>임계점({sliderValue}점) 이상 코인 없음</p>
                     return matching.map(symbol => {
                       const coin = allAnalyzed.find(c => c.symbol.toUpperCase() === symbol.toUpperCase())!
                       return (
                         <div key={symbol} className={`flex justify-between items-center p-3 rounded-xl ${currentTheme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} border border-[#00d395]/30`}>
                           <span className={`font-bold ${currentColors.text}`}>{symbol}</span>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
                             <span className="text-[#00d395] font-bold">{coin.scores.total}/140</span>
                             <SignalBadge signal={coin.signal} />
                           </div>
@@ -896,11 +866,12 @@ export default function Dashboard() {
                   })()}
                 </div>
               </div>
-            )}
+            </div>
+            
+            <button type="button" onClick={saveAlertSettings} disabled={settingsSaving} className="w-full bg-[#00d395] text-black py-4 rounded-xl font-bold text-lg">{settingsSaving ? '저장 중...' : '💾 설정 저장'}</button>
           </div>
         )}
 
-        {/* 포트폴리오 */}
         {activeTab === 'portfolio' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -925,7 +896,6 @@ export default function Dashboard() {
             <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
               <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>➕ 새 포지션</h3>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-                {/* 코인 선택 - 검색 가능 */}
                 <div className="relative" ref={portfolioDropdownRef}>
                   <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>코인</label>
                   <button type="button" onClick={() => { setShowPortfolioDropdown(!showPortfolioDropdown); setPortfolioSearchResults(allCoins) }} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'} text-left flex justify-between`}>
@@ -934,21 +904,10 @@ export default function Dashboard() {
                   {showPortfolioDropdown && (
                     <div className={`absolute z-50 w-64 mt-1 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} shadow-lg`}>
                       <div className="p-2">
-                        <input 
-                          type="text" 
-                          placeholder="코인 검색..." 
-                          value={portfolioCoinSearch}
-                          onChange={(e) => { setPortfolioCoinSearch(e.target.value); searchPortfolioCoin(e.target.value) }}
-                          className={`w-full p-2 rounded-lg border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'} text-sm`}
-                          autoFocus
-                        />
+                        <input type="text" placeholder="코인 검색..." value={portfolioCoinSearch} onChange={(e) => { setPortfolioCoinSearch(e.target.value); searchPortfolioCoin(e.target.value) }} className={`w-full p-2 rounded-lg border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'} text-sm`} autoFocus />
                       </div>
                       <div className="max-h-48 overflow-y-auto">
-                        {portfolioSearchLoading ? (
-                          <p className={`p-3 text-center ${currentColors.textSecondary}`}>검색 중...</p>
-                        ) : portfolioSearchResults.length === 0 ? (
-                          <p className={`p-3 text-center ${currentColors.textSecondary}`}>결과 없음</p>
-                        ) : (
+                        {portfolioSearchLoading ? <p className={`p-3 text-center ${currentColors.textSecondary}`}>검색 중...</p> : portfolioSearchResults.length === 0 ? <p className={`p-3 text-center ${currentColors.textSecondary}`}>결과 없음</p> : (
                           portfolioSearchResults.map(coin => (
                             <button key={coin} type="button" onClick={() => { setPositionCoin(coin); setShowPortfolioDropdown(false); setPortfolioCoinSearch('') }} className={`w-full px-4 py-2 text-left hover:bg-[#00d395]/20 ${currentColors.text} ${positionCoin === coin ? 'bg-[#00d395]/10' : ''}`}>{coin}</button>
                           ))
@@ -964,21 +923,10 @@ export default function Dashboard() {
                     <button type="button" onClick={() => setPositionType('SHORT')} className={`flex-1 p-3 rounded-r-xl font-bold ${positionType === 'SHORT' ? 'bg-[#ff6b6b] text-white' : currentTheme === 'dark' ? 'bg-white/5 text-white/70' : 'bg-gray-100'}`}>🔴</button>
                   </div>
                 </div>
-                <div>
-                  <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>진입가</label>
-                  <input type="text" inputMode="decimal" placeholder="0.00" value={entryValue} onChange={(e) => setEntryValue(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} />
-                </div>
-                <div>
-                  <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>목표가</label>
-                  <input type="text" inputMode="decimal" placeholder="0.00" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} />
-                </div>
-                <div>
-                  <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>손절가</label>
-                  <input type="text" inputMode="decimal" placeholder="0.00" value={stopValue} onChange={(e) => setStopValue(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} />
-                </div>
-                <div className="flex items-end">
-                  <button type="button" onClick={addPosition} className="w-full bg-[#00d395] text-black p-3 rounded-xl font-bold">추가</button>
-                </div>
+                <div><label className={`block text-sm ${currentColors.textSecondary} mb-1`}>진입가</label><input type="text" inputMode="decimal" placeholder="0.00" value={entryValue} onChange={(e) => setEntryValue(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} /></div>
+                <div><label className={`block text-sm ${currentColors.textSecondary} mb-1`}>목표가</label><input type="text" inputMode="decimal" placeholder="0.00" value={targetValue} onChange={(e) => setTargetValue(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} /></div>
+                <div><label className={`block text-sm ${currentColors.textSecondary} mb-1`}>손절가</label><input type="text" inputMode="decimal" placeholder="0.00" value={stopValue} onChange={(e) => setStopValue(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${currentTheme === 'dark' ? 'bg-white/5 text-white' : 'bg-gray-50'}`} /></div>
+                <div className="flex items-end"><button type="button" onClick={addPosition} className="w-full bg-[#00d395] text-black p-3 rounded-xl font-bold">추가</button></div>
               </div>
             </div>
             
@@ -986,17 +934,9 @@ export default function Dashboard() {
               <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📋 포지션 목록</h3>
               <div className="overflow-x-auto">
                 <table className="w-full">
-                  <thead>
-                    <tr className={`border-b ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
-                      {['코인', '방향', '진입가', '목표가', '손절가', '상태', ''].map(h => (
-                        <th key={h} className={`text-left p-3 text-sm ${currentColors.textSecondary}`}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
+                  <thead><tr className={`border-b ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{['코인', '방향', '진입가', '목표가', '손절가', '상태', ''].map(h => <th key={h} className={`text-left p-3 text-sm ${currentColors.textSecondary}`}>{h}</th>)}</tr></thead>
                   <tbody>
-                    {portfolioPositions.length === 0 ? (
-                      <tr><td colSpan={7} className={`text-center p-8 ${currentColors.textSecondary}`}>포지션 없음</td></tr>
-                    ) : portfolioPositions.map(position => (
+                    {portfolioPositions.length === 0 ? <tr><td colSpan={7} className={`text-center p-8 ${currentColors.textSecondary}`}>포지션 없음</td></tr> : portfolioPositions.map(position => (
                       <tr key={position.id} className={`border-b ${currentTheme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
                         <td className={`p-3 font-bold ${currentColors.text}`}>{position.coin_symbol}</td>
                         <td className="p-3"><span className={`px-3 py-1 rounded-full text-xs font-bold ${position.position_type === 'LONG' ? 'bg-[#00d395]/20 text-[#00d395]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{position.position_type}</span></td>
@@ -1004,9 +944,7 @@ export default function Dashboard() {
                         <td className="p-3 text-blue-400">${position.target_price.toLocaleString()}</td>
                         <td className="p-3 text-[#ff6b6b]">${position.stop_loss.toLocaleString()}</td>
                         <td className="p-3"><span className={`px-3 py-1 rounded-full text-xs ${position.status === 'active' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-white/10 text-white/50'}`}>{position.status === 'active' ? '활성' : '종료'}</span></td>
-                        <td className="p-3">
-                          <button type="button" onClick={() => deletePosition(position)} className="px-3 py-1 bg-[#ff6b6b] text-white rounded-lg text-sm hover:bg-[#ff6b6b]/80">삭제</button>
-                        </td>
+                        <td className="p-3"><button type="button" onClick={() => deletePosition(position)} className="px-3 py-1 bg-[#ff6b6b] text-white rounded-lg text-sm hover:bg-[#ff6b6b]/80">삭제</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1017,7 +955,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* 리포트 */}
         {activeTab === 'report' && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-[#00d395] to-[#00b383] rounded-2xl p-6 text-white">
@@ -1031,10 +968,7 @@ export default function Dashboard() {
                     { label: '승률', value: `${stats.winRate}%` },
                     { label: '누적 수익', value: `${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%` }
                   ].map((item, idx) => (
-                    <div key={idx} className="text-center">
-                      <div className="text-3xl font-bold">{item.value}</div>
-                      <div className="text-sm opacity-80">{item.label}</div>
-                    </div>
+                    <div key={idx} className="text-center"><div className="text-3xl font-bold">{item.value}</div><div className="text-sm opacity-80">{item.label}</div></div>
                   ))
                 })()}
               </div>
@@ -1058,49 +992,67 @@ export default function Dashboard() {
                     { label: '숏', value: `${shortCount}개` },
                     { label: '누적 수익률', value: `${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%`, color: parseFloat(stats.totalPnL) >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]' }
                   ].map((item, idx) => (
-                    <div key={idx} className={`flex justify-between p-2 border-b ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
-                      <span className={currentColors.textSecondary}>{item.label}</span>
-                      <span className={`font-bold ${item.color || currentColors.text}`}>{item.value}</span>
-                    </div>
+                    <div key={idx} className={`flex justify-between p-2 border-b ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}><span className={currentColors.textSecondary}>{item.label}</span><span className={`font-bold ${item.color || currentColors.text}`}>{item.value}</span></div>
                   ))
                 })()}
               </div>
               
               <div className="space-y-6">
                 <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                  <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📥 리포트 다운로드</h3>
-                  <p className={`${currentColors.textSecondary} text-sm mb-4`}>전체 트레이딩 내역이 포함된 PDF 리포트를 생성합니다.</p>
+                  <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📥 PDF 다운로드</h3>
+                  <p className={`${currentColors.textSecondary} text-sm mb-4`}>전체 포지션 기록과 상세 분석이 포함된 PDF를 생성합니다.</p>
                   <button type="button" onClick={downloadPDF} className="w-full bg-[#00d395] text-black py-4 rounded-xl font-bold text-lg hover:bg-[#00d395]/90">📄 PDF 생성</button>
                 </div>
                 
                 <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                  <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📋 PDF 내용</h3>
+                  <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📋 PDF 포함 내용</h3>
                   <ul className={`space-y-1 ${currentColors.textSecondary} text-sm`}>
-                    <li>✅ 성과 요약</li>
-                    <li>✅ 활성 포지션 상세</li>
+                    <li>✅ 트레이딩 성과 요약</li>
+                    <li>✅ 성과 지표 (활성/종료/수익/손실)</li>
+                    <li>✅ 상세 분석 (롱/숏 비율 등)</li>
+                    <li>✅ 활성 포지션 전체 목록</li>
                     <li>✅ 종료 포지션 & 수익률</li>
-                    <li>✅ 롱/숏 분석</li>
                   </ul>
                 </div>
+              </div>
+            </div>
+            
+            <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🟢 활성 포지션 미리보기</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead><tr className={`border-b ${currentTheme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{['코인', '방향', '진입가', '목표가', '손절가', '손익비'].map(h => <th key={h} className={`text-left p-3 text-sm ${currentColors.textSecondary}`}>{h}</th>)}</tr></thead>
+                  <tbody>
+                    {portfolioPositions.filter(p => p.status === 'active').length === 0 ? <tr><td colSpan={6} className={`text-center p-8 ${currentColors.textSecondary}`}>활성 포지션 없음</td></tr> : portfolioPositions.filter(p => p.status === 'active').map(position => {
+                      const rr = position.position_type === 'LONG' ? ((position.target_price - position.entry_price) / (position.entry_price - position.stop_loss)).toFixed(2) : ((position.entry_price - position.target_price) / (position.stop_loss - position.entry_price)).toFixed(2)
+                      return (
+                        <tr key={position.id} className={`border-b ${currentTheme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
+                          <td className={`p-3 font-bold ${currentColors.text}`}>{position.coin_symbol}</td>
+                          <td className="p-3"><span className={`px-3 py-1 rounded-full text-xs font-bold ${position.position_type === 'LONG' ? 'bg-[#00d395]/20 text-[#00d395]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{position.position_type}</span></td>
+                          <td className={`p-3 ${currentColors.text}`}>${position.entry_price.toLocaleString()}</td>
+                          <td className="p-3 text-[#00d395]">${position.target_price.toLocaleString()}</td>
+                          <td className="p-3 text-[#ff6b6b]">${position.stop_loss.toLocaleString()}</td>
+                          <td className="p-3 text-yellow-400 font-bold">1:{rr}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* 모달 */}
       {showDetail && selectedCoin && (
         <div className={`fixed inset-0 z-50 ${currentTheme === 'dark' ? 'bg-[#0a0a14]' : 'bg-white'} overflow-y-auto`}>
           <div className={`sticky top-0 ${currentTheme === 'dark' ? 'bg-[#0a0a14] border-white/10' : 'bg-white border-gray-200'} border-b z-10`}>
-            <div className="flex justify-between items-center p-4">
-              <div className="flex items-center gap-3"><h2 className={`text-xl font-bold ${currentColors.text}`}>{selectedCoin.symbol.toUpperCase()}</h2><SignalBadge signal={selectedCoin.signal} /></div>
-              <button type="button" onClick={() => setShowDetail(false)} className={`${currentTheme === 'dark' ? 'bg-white/10' : 'bg-gray-100'} px-4 py-2 rounded-lg font-semibold ${currentColors.text}`}>✕ 닫기</button>
-            </div>
+            <div className="flex justify-between items-center p-4"><div className="flex items-center gap-3"><h2 className={`text-xl font-bold ${currentColors.text}`}>{selectedCoin.symbol.toUpperCase()}</h2><SignalBadge signal={selectedCoin.signal} /></div><button type="button" onClick={() => setShowDetail(false)} className={`${currentTheme === 'dark' ? 'bg-white/10' : 'bg-gray-100'} px-4 py-2 rounded-lg font-semibold ${currentColors.text}`}>✕ 닫기</button></div>
           </div>
           <div className="max-w-2xl mx-auto p-4 pb-20">
             <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 mb-4 border ${currentColors.cardBorder}`}>
               <p className={currentColors.textSecondary}>{selectedCoin.name}</p>
-              <p className="text-4xl font-bold text-[#00d395] mb-2">${selectedCoin.current_price.toLocaleString(undefined, { maximumFractionDigits: 6 })}</p>
+              <p className="text-4xl font-bold text-[#00d395] mb-2">{formatPrice(selectedCoin.current_price)}</p>
               <p className={selectedCoin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}>{selectedCoin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(selectedCoin.price_change_percentage_24h || 0).toFixed(2)}%</p>
             </div>
             <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 mb-4 border ${currentColors.cardBorder}`}>
@@ -1116,10 +1068,7 @@ export default function Dashboard() {
                   <ScoreBar label="전략" score={selectedCoin.scores.strategy} max={10} color="bg-yellow-500" />
                 </div>
               ) : (
-                <div className={`${currentTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-6 text-center`}>
-                  <p className={currentColors.textSecondary}>🔒 PRO 전용</p>
-                  <Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block mt-2">업그레이드</Link>
-                </div>
+                <div className={`${currentTheme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-6 text-center`}><p className={currentColors.textSecondary}>🔒 PRO 전용</p><Link href="/pricing" className="bg-[#00d395] text-black px-6 py-2 rounded-xl font-semibold inline-block mt-2">업그레이드</Link></div>
               )}
             </div>
             {profile?.plan !== 'free' && (
@@ -1127,17 +1076,15 @@ export default function Dashboard() {
                 <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 mb-4 border ${currentColors.cardBorder}`}>
                   <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>💰 매매 전략</h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#00d395]/10 border border-[#00d395]/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>진입가</p><p className="text-[#00d395] text-xl font-bold">${selectedCoin.entry_price.toLocaleString()}</p></div>
-                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>목표가</p><p className="text-blue-400 text-xl font-bold">${selectedCoin.target_price.toLocaleString()}</p></div>
-                    <div className="bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>손절가</p><p className="text-[#ff6b6b] text-xl font-bold">${selectedCoin.stop_loss.toLocaleString()}</p></div>
+                    <div className="bg-[#00d395]/10 border border-[#00d395]/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>진입가</p><p className="text-[#00d395] text-xl font-bold">{formatPrice(selectedCoin.entry_price)}</p></div>
+                    <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>목표가</p><p className="text-blue-400 text-xl font-bold">{formatPrice(selectedCoin.target_price)}</p></div>
+                    <div className="bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>손절가</p><p className="text-[#ff6b6b] text-xl font-bold">{formatPrice(selectedCoin.stop_loss)}</p></div>
                     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4"><p className={currentColors.textSecondary + ' text-sm'}>손익비</p><p className="text-yellow-400 text-xl font-bold">{selectedCoin.risk_reward}</p></div>
                   </div>
                 </div>
                 <div className={`${currentTheme === 'dark' ? 'bg-[#1a1a2e]' : 'bg-white'} rounded-2xl p-6 mb-4 border ${currentColors.cardBorder}`}>
                   <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>🤖 AI 코멘트</h3>
-                  <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4">
-                    <p className={currentTheme === 'dark' ? 'text-white/90' : 'text-gray-700'}>{selectedCoin.ai_comment}</p>
-                  </div>
+                  <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-xl p-4"><p className={currentTheme === 'dark' ? 'text-white/90' : 'text-gray-700'}>{selectedCoin.ai_comment}</p></div>
                 </div>
               </>
             )}
@@ -1147,24 +1094,8 @@ export default function Dashboard() {
       )}
 
       <style jsx global>{`
-        input[type="range"]::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: #00d395;
-          cursor: grab;
-          border: 3px solid white;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-        }
-        input[type="range"]::-moz-range-thumb {
-          width: 24px;
-          height: 24px;
-          border-radius: 50%;
-          background: #00d395;
-          cursor: grab;
-          border: 3px solid white;
-        }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #00d395; cursor: grab; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+        input[type="range"]::-moz-range-thumb { width: 24px; height: 24px; border-radius: 50%; background: #00d395; cursor: grab; border: 3px solid white; }
       `}</style>
     </div>
   )
