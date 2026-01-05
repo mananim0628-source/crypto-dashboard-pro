@@ -110,37 +110,6 @@ type AlertNotification = {
   read: boolean
 }
 
-type BacktestResult = {
-  symbol: string
-  timeframe: string
-  days: number
-  summary: {
-    initialCapital: number
-    finalCapital: number
-    totalReturn: string
-    totalTrades: number
-    wins: number
-    losses: number
-    winRate: string
-    maxDrawdown: string
-    profitFactor: string
-    avgWin: string
-    avgLoss: string
-  }
-  trades: {
-    entryTime: number
-    exitTime: number
-    entryPrice: number
-    exitPrice: number
-    score: number
-    pnl: number
-    pnlPercent: number
-    result: 'win' | 'loss'
-  }[]
-  equityCurve: { timestamp: number; equity: number }[]
-  monthlyReturns: { month: string; return: number }[]
-}
-
 const formatPrice = (price: number): string => {
   if (price === 0) return '$0'
   if (price >= 1) return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
@@ -166,7 +135,7 @@ export default function Dashboard() {
   const [countdown, setCountdown] = useState(120)
   const [selectedCoin, setSelectedCoin] = useState<AnalyzedCoin | null>(null)
   const [showDetail, setShowDetail] = useState(false)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'alerts' | 'portfolio' | 'backtest' | 'report'>('dashboard')
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'alerts' | 'portfolio' | 'indicator' | 'report'>('dashboard')
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [themeLoaded, setThemeLoaded] = useState(false)
   const [alertSettings, setAlertSettings] = useState<AlertSettings | null>(null)
@@ -196,22 +165,7 @@ export default function Dashboard() {
   const [telegramId, setTelegramId] = useState('')
   const [showFavorites, setShowFavorites] = useState(true)
   const notificationRef = useRef<HTMLDivElement>(null)
-
-  // 백테스트 상태
-  const [backtestCoin, setBacktestCoin] = useState('BTC')
-  const [backtestTimeframe, setBacktestTimeframe] = useState('1d')
-  const [backtestDays, setBacktestDays] = useState(90)
-  const [backtestCapital, setBacktestCapital] = useState('10000000')
-  const [backtestThreshold, setBacktestThreshold] = useState(90)
-  const [backtestInvestRatio, setBacktestInvestRatio] = useState(10)
-  const [backtestTargetMult, setBacktestTargetMult] = useState('1.04')
-  const [backtestStopMult, setBacktestStopMult] = useState('0.97')
-  const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null)
-  const [backtestLoading, setBacktestLoading] = useState(false)
-  const [backtestCoinSearch, setBacktestCoinSearch] = useState('')
-  const [backtestSearchResults, setBacktestSearchResults] = useState<string[]>([])
-  const [showBacktestDropdown, setShowBacktestDropdown] = useState(false)
-  const backtestDropdownRef = useRef<HTMLDivElement>(null)
+  const [indicatorSection, setIndicatorSection] = useState<'intro' | 'backtest' | 'deepbacktest' | 'automate'>('intro')
 
   const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE', 'PEPE', 'BONK', 'FLOKI', 'WIF', 'ENA', 'PENDLE', 'JUP', 'WLD', 'STRK', 'PYTH', 'JTO', 'MEME', 'BLUR', 'ORDI', 'SATS', 'RATS', 'LEO', 'TON', 'TRX', 'HBAR', 'KAS', 'OKB', 'CRO', 'RUNE', 'STX', 'FTM', 'EGLD', 'FLOW', 'THETA', 'XTZ', 'NEO', 'KLAY', 'ZEC', 'IOTA', 'EOS']
 
@@ -293,7 +247,6 @@ export default function Dashboard() {
       if (portfolioDropdownRef.current && !portfolioDropdownRef.current.contains(event.target as Node)) setShowPortfolioDropdown(false)
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) setShowNotifications(false)
       if (searchDropdownRef.current && !searchDropdownRef.current.contains(event.target as Node)) setShowSearchDropdown(false)
-      if (backtestDropdownRef.current && !backtestDropdownRef.current.contains(event.target as Node)) setShowBacktestDropdown(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
@@ -409,40 +362,6 @@ export default function Dashboard() {
     setPortfolioSearchLoading(false)
   }
 
-  const searchBacktestCoin = (query: string) => {
-    if (!query.trim()) { setBacktestSearchResults(allCoins.slice(0, 20)); return }
-    const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
-    const exactMatch = allCoins.filter(c => c === queryUpper)
-    const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
-    const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
-    setBacktestSearchResults([...exactMatch, ...startsWith, ...includes].slice(0, 20))
-  }
-
-  const runBacktest = async () => {
-    if (profile?.plan === 'free') { alert('백테스트는 PRO 전용 기능입니다'); return }
-    setBacktestLoading(true)
-    try {
-      const response = await fetch('/api/backtest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          symbol: backtestCoin,
-          days: backtestDays,
-          timeframe: backtestTimeframe,
-          initialCapital: parseInt(backtestCapital),
-          entryThreshold: backtestThreshold,
-          investmentRatio: backtestInvestRatio,
-          targetMultiplier: parseFloat(backtestTargetMult),
-          stopLossMultiplier: parseFloat(backtestStopMult),
-        })
-      })
-      const data = await response.json()
-      if (data.error) { alert('백테스트 실패: ' + data.error); return }
-      setBacktestResult(data)
-    } catch (e) { alert('백테스트 중 오류가 발생했습니다') }
-    setBacktestLoading(false)
-  }
-
   const saveAlertSettings = async () => {
     if (!user || !alertSettings) return
     setSettingsSaving(true)
@@ -488,7 +407,7 @@ export default function Dashboard() {
 
   const downloadPDF = () => {
     const stats = calculatePortfolioStats(); const now = new Date(); const dateStr = now.toLocaleDateString('ko-KR'); const timeStr = now.toLocaleTimeString('ko-KR')
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>크립토 대시보드 PRO - 트레이딩 리포트</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Malgun Gothic',sans-serif;padding:40px;background:#fff;color:#333;line-height:1.6}.header{text-align:center;border-bottom:3px solid #00d395;padding-bottom:30px;margin-bottom:40px}.header h1{color:#00d395;font-size:28px}.section{margin-bottom:40px}.section h2{color:#333;font-size:18px;border-left:4px solid #00d395;padding-left:15px;margin-bottom:20px}table{width:100%;border-collapse:collapse}th{background:#f8f9fa;padding:12px;text-align:left;border-bottom:2px solid #dee2e6}td{padding:12px;border-bottom:1px solid #eee}.long{color:#00d395}.short{color:#ff6b6b}.summary-box{background:linear-gradient(135deg,#00d395,#00b383);color:white;padding:25px;border-radius:12px;margin-bottom:30px}.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.footer{text-align:center;margin-top:50px;color:#999}</style></head><body><div class="header"><h1>🚀 크립토 대시보드 PRO</h1><p>트레이딩 리포트 - ${dateStr} ${timeStr}</p></div><div class="summary-box"><div class="summary-grid"><div><div style="font-size:24px;font-weight:bold">${stats.total}</div><div>총 포지션</div></div><div><div style="font-size:24px;font-weight:bold">${stats.active}</div><div>활성</div></div><div><div style="font-size:24px;font-weight:bold">${stats.winRate}%</div><div>승률</div></div><div><div style="font-size:24px;font-weight:bold">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div>수익률</div></div></div></div><div class="section"><h2>📋 활성 포지션</h2><table><thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>목표가</th><th>손절가</th></tr></thead><tbody>${portfolioPositions.filter(p=>p.status==='active').map(p=>`<tr><td>${p.coin_symbol}</td><td class="${p.position_type.toLowerCase()}">${p.position_type}</td><td>$${p.entry_price.toLocaleString()}</td><td>$${p.target_price.toLocaleString()}</td><td>$${p.stop_loss.toLocaleString()}</td></tr>`).join('')||'<tr><td colspan="5" style="text-align:center;padding:30px">없음</td></tr>'}</tbody></table></div></body></html>`
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>크립토 대시보드 PRO - 트레이딩 리포트</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Malgun Gothic',sans-serif;padding:40px;background:#fff;color:#333;line-height:1.6}.header{text-align:center;border-bottom:3px solid #00d395;padding-bottom:30px;margin-bottom:40px}.header h1{color:#00d395;font-size:28px}table{width:100%;border-collapse:collapse}th{background:#f8f9fa;padding:12px;text-align:left;border-bottom:2px solid #dee2e6}td{padding:12px;border-bottom:1px solid #eee}.long{color:#00d395}.short{color:#ff6b6b}.summary-box{background:linear-gradient(135deg,#00d395,#00b383);color:white;padding:25px;border-radius:12px;margin-bottom:30px}.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}</style></head><body><div class="header"><h1>🚀 크립토 대시보드 PRO</h1><p>트레이딩 리포트 - ${dateStr} ${timeStr}</p></div><div class="summary-box"><div class="summary-grid"><div><div style="font-size:24px;font-weight:bold">${stats.total}</div><div>총 포지션</div></div><div><div style="font-size:24px;font-weight:bold">${stats.active}</div><div>활성</div></div><div><div style="font-size:24px;font-weight:bold">${stats.winRate}%</div><div>승률</div></div><div><div style="font-size:24px;font-weight:bold">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div>수익률</div></div></div></div></body></html>`
     const win = window.open('', '_blank'); if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
   }
 
@@ -531,49 +450,6 @@ export default function Dashboard() {
     )
   }
 
-  // 수익률 차트 (간단한 SVG)
-  const EquityChart = ({ data }: { data: { timestamp: number; equity: number }[] }) => {
-    if (data.length < 2) return null
-    const minEquity = Math.min(...data.map(d => d.equity))
-    const maxEquity = Math.max(...data.map(d => d.equity))
-    const range = maxEquity - minEquity || 1
-    const width = 600
-    const height = 200
-    const padding = 40
-    
-    const points = data.map((d, i) => {
-      const x = padding + (i / (data.length - 1)) * (width - padding * 2)
-      const y = height - padding - ((d.equity - minEquity) / range) * (height - padding * 2)
-      return `${x},${y}`
-    }).join(' ')
-    
-    const initialEquity = data[0]?.equity || 0
-    const finalEquity = data[data.length - 1]?.equity || 0
-    const isProfit = finalEquity >= initialEquity
-    
-    return (
-      <div className="w-full overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[400px]">
-          {/* 그리드 */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio, i) => (
-            <g key={i}>
-              <line x1={padding} y1={padding + ratio * (height - padding * 2)} x2={width - padding} y2={padding + ratio * (height - padding * 2)} stroke={theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'} />
-              <text x={padding - 5} y={padding + ratio * (height - padding * 2) + 4} textAnchor="end" className={`text-xs ${theme === 'dark' ? 'fill-white/50' : 'fill-gray-500'}`}>
-                {((maxEquity - ratio * range) / 1000000).toFixed(1)}M
-              </text>
-            </g>
-          ))}
-          {/* 기준선 (시작 자본) */}
-          <line x1={padding} y1={height - padding - ((initialEquity - minEquity) / range) * (height - padding * 2)} x2={width - padding} y2={height - padding - ((initialEquity - minEquity) / range) * (height - padding * 2)} stroke="rgba(255,255,255,0.3)" strokeDasharray="5,5" />
-          {/* 수익률 곡선 */}
-          <polyline fill="none" stroke={isProfit ? '#00d395' : '#ff6b6b'} strokeWidth="2" points={points} />
-          {/* 영역 채우기 */}
-          <polygon fill={isProfit ? 'rgba(0,211,149,0.1)' : 'rgba(255,107,107,0.1)'} points={`${padding},${height - padding} ${points} ${width - padding},${height - padding}`} />
-        </svg>
-      </div>
-    )
-  }
-
   if (!themeLoaded || loading) return (<div className="min-h-screen flex items-center justify-center bg-[#0a0a14]"><div className="text-center"><div className="w-12 h-12 border-4 border-[#00d395] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><p className="text-white">로딩 중...</p></div></div>)
 
   const sidebarAds = adSlots.filter(ad => ad.position === 'sidebar')
@@ -598,7 +474,7 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><div className="max-w-[1600px] mx-auto px-4"><div className="flex gap-2 py-3 overflow-x-auto">{[{ id: 'dashboard', label: '📊 대시보드' }, { id: 'alerts', label: '🔔 알림 설정' }, { id: 'portfolio', label: '💼 포트폴리오' }, { id: 'backtest', label: '📈 백테스트' }, { id: 'report', label: '📋 리포트' }].map(tab => (<button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl font-semibold transition whitespace-nowrap ${activeTab === tab.id ? 'bg-[#00d395] text-black' : `${theme === 'dark' ? 'bg-white/5 text-white/70 hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}`}>{tab.label}{tab.id === 'backtest' && <span className="ml-1 text-xs bg-purple-500 text-white px-1.5 py-0.5 rounded">PRO</span>}</button>))}</div></div></div>
+      <div className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><div className="max-w-[1600px] mx-auto px-4"><div className="flex gap-2 py-3 overflow-x-auto">{[{ id: 'dashboard', label: '📊 대시보드' }, { id: 'alerts', label: '🔔 알림 설정' }, { id: 'portfolio', label: '💼 포트폴리오' }, { id: 'indicator', label: '📈 트레이딩뷰 지표' }, { id: 'report', label: '📋 리포트' }].map(tab => (<button key={tab.id} type="button" onClick={() => setActiveTab(tab.id as any)} className={`px-5 py-2.5 rounded-xl font-semibold transition whitespace-nowrap ${activeTab === tab.id ? 'bg-[#00d395] text-black' : `${theme === 'dark' ? 'bg-white/5 text-white/70 hover:bg-white/10' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}`}>{tab.label}</button>))}</div></div></div>
 
       <div className="max-w-[1600px] mx-auto px-4 py-8">
         {activeTab === 'dashboard' && (
@@ -615,160 +491,342 @@ export default function Dashboard() {
           </div>
         )}
 
-        {activeTab === 'backtest' && (
+        {activeTab === 'indicator' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-2xl p-6">
-              <h3 className={`text-lg font-bold mb-2 ${currentColors.text}`}>📈 백테스트란?</h3>
-              <p className={currentColors.textSecondary}>과거 데이터로 체크리스트 시스템의 성능을 검증합니다. "만약 3개월 전부터 이 시스템을 썼다면?" 시뮬레이션 결과를 확인하세요.</p>
+            {/* 섹션 네비게이션 */}
+            <div className="flex gap-2 flex-wrap">
+              {[
+                { id: 'intro', label: '📊 지표 소개', icon: '📊' },
+                { id: 'backtest', label: '📈 백테스팅', icon: '📈' },
+                { id: 'deepbacktest', label: '🔬 딥백테스팅', icon: '🔬' },
+                { id: 'automate', label: '🤖 자동매매 연동', icon: '🤖' },
+              ].map(section => (
+                <button
+                  key={section.id}
+                  onClick={() => setIndicatorSection(section.id as any)}
+                  className={`px-4 py-2 rounded-xl font-semibold transition ${
+                    indicatorSection === section.id
+                      ? 'bg-[#00d395] text-black'
+                      : theme === 'dark' ? 'bg-white/10 text-white/70 hover:bg-white/20' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  {section.label}
+                </button>
+              ))}
             </div>
 
-            {profile?.plan === 'free' ? (
-              <div className={`${currentColors.cardBg} rounded-2xl p-8 border ${currentColors.cardBorder} text-center`}>
-                <div className="text-6xl mb-4">🔒</div>
-                <h3 className={`text-2xl font-bold mb-4 ${currentColors.text}`}>PRO 전용 기능</h3>
-                <p className={`${currentColors.textSecondary} mb-6`}>백테스트는 PRO 플랜 전용 기능입니다.<br/>과거 데이터로 시스템 성능을 검증하고 신뢰도를 확인하세요.</p>
-                <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-6 mb-6`}>
-                  <h4 className={`font-bold mb-3 ${currentColors.text}`}>백테스트 미리보기</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                    <div><div className="text-2xl font-bold text-[#00d395]">+32.5%</div><div className={currentColors.textSecondary + ' text-sm'}>3개월 수익률</div></div>
-                    <div><div className="text-2xl font-bold text-[#00d395]">67.2%</div><div className={currentColors.textSecondary + ' text-sm'}>승률</div></div>
-                    <div><div className="text-2xl font-bold text-yellow-400">1.52</div><div className={currentColors.textSecondary + ' text-sm'}>손익비</div></div>
-                    <div><div className="text-2xl font-bold text-[#ff6b6b]">-8.3%</div><div className={currentColors.textSecondary + ' text-sm'}>최대 낙폭</div></div>
-                  </div>
-                  <p className={`${currentColors.textSecondary} text-xs mt-4`}>* BTC 90일 백테스트 예시 데이터</p>
-                </div>
-                <Link href="/pricing" className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold inline-block">PRO 업그레이드 →</Link>
-              </div>
-            ) : (
+            {indicatorSection === 'intro' && (
               <>
-                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                  <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>⚙️ 백테스트 설정</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="relative" ref={backtestDropdownRef}>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>코인</label>
-                      <button type="button" onClick={() => { setShowBacktestDropdown(!showBacktestDropdown); setBacktestSearchResults(allCoins.slice(0, 20)) }} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} text-left flex justify-between`}>
-                        <span>{backtestCoin}</span><span>▼</span>
-                      </button>
-                      {showBacktestDropdown && (
-                        <div className={`absolute z-50 w-full mt-1 rounded-xl border ${currentColors.cardBorder} ${currentColors.cardBg} shadow-lg`}>
-                          <div className="p-2"><input type="text" placeholder="검색..." value={backtestCoinSearch} onChange={(e) => { setBacktestCoinSearch(e.target.value); searchBacktestCoin(e.target.value) }} className={`w-full p-2 rounded-lg border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} text-sm`} autoFocus /></div>
-                          <div className="max-h-48 overflow-y-auto">{backtestSearchResults.map(c => (<button key={c} type="button" onClick={() => { setBacktestCoin(c); setShowBacktestDropdown(false); setBacktestCoinSearch('') }} className={`w-full px-4 py-2 text-left hover:bg-[#00d395]/20 ${backtestCoin === c ? 'bg-[#00d395]/10' : ''}`}>{c}</button>))}</div>
-                        </div>
-                      )}
+                {/* 왜 트레이딩뷰인가 */}
+                <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-2xl p-6">
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🎯 왜 트레이딩뷰인가?</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
+                      <div className="text-3xl mb-2">🌍</div>
+                      <h4 className={`font-bold mb-1 ${currentColors.text}`}>글로벌 표준 플랫폼</h4>
+                      <p className={`text-sm ${currentColors.textSecondary}`}>전 세계 5천만+ 트레이더가 사용하는 검증된 차트 플랫폼</p>
                     </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>타임프레임</label>
-                      <select value={backtestTimeframe} onChange={(e) => setBacktestTimeframe(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
-                        <option value="15m">15분봉</option>
-                        <option value="1h">1시간봉</option>
-                        <option value="4h">4시간봉</option>
-                        <option value="1d">일봉</option>
-                      </select>
+                    <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
+                      <div className="text-3xl mb-2">📊</div>
+                      <h4 className={`font-bold mb-1 ${currentColors.text}`}>정확한 백테스트</h4>
+                      <p className={`text-sm ${currentColors.textSecondary}`}>트레이딩뷰 내장 백테스트로 전략 성능을 직접 검증</p>
                     </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>기간</label>
-                      <select value={backtestDays} onChange={(e) => setBacktestDays(parseInt(e.target.value))} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
-                        <option value={30}>1개월</option>
-                        <option value={90}>3개월</option>
-                        <option value={180}>6개월</option>
-                        <option value={365}>1년</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>시작 자본</label>
-                      <input type="text" value={backtestCapital} onChange={(e) => setBacktestCapital(e.target.value)} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`} />
-                    </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>진입 기준 점수</label>
-                      <input type="number" min={50} max={130} value={backtestThreshold} onChange={(e) => setBacktestThreshold(parseInt(e.target.value))} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`} />
-                    </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>투자 비율 (%)</label>
-                      <input type="number" min={1} max={100} value={backtestInvestRatio} onChange={(e) => setBacktestInvestRatio(parseInt(e.target.value))} className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`} />
-                    </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>목표가 배율</label>
-                      <input type="text" value={backtestTargetMult} onChange={(e) => setBacktestTargetMult(e.target.value)} placeholder="1.04" className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`} />
-                    </div>
-                    <div>
-                      <label className={`block text-sm ${currentColors.textSecondary} mb-1`}>손절가 배율</label>
-                      <input type="text" value={backtestStopMult} onChange={(e) => setBacktestStopMult(e.target.value)} placeholder="0.97" className={`w-full p-3 rounded-xl border ${currentColors.cardBorder} ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`} />
+                    <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
+                      <div className="text-3xl mb-2">⚡</div>
+                      <h4 className={`font-bold mb-1 ${currentColors.text}`}>실시간 시그널</h4>
+                      <p className={`text-sm ${currentColors.textSecondary}`}>차트에서 바로 진입/청산 시그널 확인 및 알림</p>
                     </div>
                   </div>
-                  <button type="button" onClick={runBacktest} disabled={backtestLoading} className="mt-6 w-full bg-[#00d395] text-black py-4 rounded-xl font-bold text-lg disabled:opacity-50">
-                    {backtestLoading ? '⏳ 백테스트 실행 중...' : '🚀 백테스트 실행'}
-                  </button>
                 </div>
 
-                {backtestResult && (
-                  <>
-                    <div className="bg-gradient-to-r from-[#00d395] to-[#00b383] rounded-2xl p-6 text-white">
-                      <h3 className="text-lg font-bold mb-4">📊 {backtestResult.symbol} 백테스트 결과 ({backtestResult.days}일)</h3>
-                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-                        <div><div className="text-3xl font-bold">{parseFloat(backtestResult.summary.totalReturn) >= 0 ? '+' : ''}{backtestResult.summary.totalReturn}%</div><div className="text-sm opacity-80">총 수익률</div></div>
-                        <div><div className="text-3xl font-bold">{backtestResult.summary.winRate}%</div><div className="text-sm opacity-80">승률</div></div>
-                        <div><div className="text-3xl font-bold">{backtestResult.summary.profitFactor}</div><div className="text-sm opacity-80">손익비</div></div>
-                        <div><div className="text-3xl font-bold">{backtestResult.summary.totalTrades}</div><div className="text-sm opacity-80">총 거래</div></div>
-                        <div><div className="text-3xl font-bold text-red-200">-{backtestResult.summary.maxDrawdown}%</div><div className="text-sm opacity-80">최대 낙폭</div></div>
-                      </div>
+                {/* 지표 비교 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* FREE 추천 지표 */}
+                  <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-2xl">🆓</span>
+                      <h3 className={`text-xl font-bold ${currentColors.text}`}>트레이딩뷰 무료 버전</h3>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                        <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📈 자산 변화</h3>
-                        <EquityChart data={backtestResult.equityCurve} />
-                        <div className="flex justify-between mt-4 text-sm">
-                          <div><span className={currentColors.textSecondary}>시작: </span><span className={currentColors.text}>₩{backtestResult.summary.initialCapital.toLocaleString()}</span></div>
-                          <div><span className={currentColors.textSecondary}>종료: </span><span className={parseFloat(backtestResult.summary.totalReturn) >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}>₩{backtestResult.summary.finalCapital.toLocaleString()}</span></div>
+                    <p className={`${currentColors.textSecondary} text-sm mb-4`}>
+                      트레이딩뷰 무료 계정은 커스텀 지표 <strong className="text-yellow-400">최대 3개</strong>까지 사용 가능합니다.
+                    </p>
+                    <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 mb-4`}>
+                      <h4 className={`font-bold mb-3 ${currentColors.text}`}>📌 추천 기본 지표 조합</h4>
+                      <div className="space-y-3">
+                        <div className={`flex justify-between items-center pb-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
+                          <span className={currentColors.text}>RSI (상대강도지수)</span>
+                          <span className="text-[#00d395] text-sm">과매수/과매도</span>
                         </div>
-                      </div>
-                      <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                        <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📊 상세 통계</h3>
-                        <div className="space-y-3">
-                          {[
-                            { label: '총 거래', value: `${backtestResult.summary.totalTrades}회` },
-                            { label: '승리', value: `${backtestResult.summary.wins}회`, color: 'text-[#00d395]' },
-                            { label: '패배', value: `${backtestResult.summary.losses}회`, color: 'text-[#ff6b6b]' },
-                            { label: '승률', value: `${backtestResult.summary.winRate}%`, color: 'text-[#00d395]' },
-                            { label: '평균 수익', value: `+${backtestResult.summary.avgWin}%`, color: 'text-[#00d395]' },
-                            { label: '평균 손실', value: `-${backtestResult.summary.avgLoss}%`, color: 'text-[#ff6b6b]' },
-                            { label: '손익비', value: backtestResult.summary.profitFactor, color: 'text-yellow-400' },
-                            { label: '최대 낙폭', value: `-${backtestResult.summary.maxDrawdown}%`, color: 'text-[#ff6b6b]' },
-                          ].map((item, i) => (
-                            <div key={i} className={`flex justify-between py-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-100'}`}>
-                              <span className={currentColors.textSecondary}>{item.label}</span>
-                              <span className={`font-bold ${item.color || currentColors.text}`}>{item.value}</span>
-                            </div>
-                          ))}
+                        <div className={`flex justify-between items-center pb-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>
+                          <span className={currentColors.text}>MACD</span>
+                          <span className="text-[#00d395] text-sm">추세 전환</span>
+                        </div>
+                        <div className={`flex justify-between items-center`}>
+                          <span className={currentColors.text}>볼린저 밴드</span>
+                          <span className="text-[#00d395] text-sm">변동성 분석</span>
                         </div>
                       </div>
                     </div>
+                    <p className={`text-xs ${currentColors.textSecondary}`}>
+                      * 위 지표들은 트레이딩뷰 기본 제공 지표입니다
+                    </p>
+                  </div>
 
-                    <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-                      <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📋 최근 거래 내역</h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead><tr className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><th className={`text-left p-3 ${currentColors.textSecondary}`}>진입일</th><th className={`text-left p-3 ${currentColors.textSecondary}`}>청산일</th><th className={`text-left p-3 ${currentColors.textSecondary}`}>점수</th><th className={`text-left p-3 ${currentColors.textSecondary}`}>진입가</th><th className={`text-left p-3 ${currentColors.textSecondary}`}>청산가</th><th className={`text-left p-3 ${currentColors.textSecondary}`}>수익률</th><th className={`text-left p-3 ${currentColors.textSecondary}`}>결과</th></tr></thead>
-                          <tbody>
-                            {backtestResult.trades.slice(-20).reverse().map((trade, i) => (
-                              <tr key={i} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
-                                <td className={`p-3 ${currentColors.text}`}>{new Date(trade.entryTime).toLocaleDateString('ko-KR')}</td>
-                                <td className={`p-3 ${currentColors.text}`}>{new Date(trade.exitTime).toLocaleDateString('ko-KR')}</td>
-                                <td className={`p-3 ${currentColors.text}`}>{trade.score}/140</td>
-                                <td className={`p-3 ${currentColors.text}`}>${trade.entryPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                                <td className={`p-3 ${currentColors.text}`}>${trade.exitPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}</td>
-                                <td className={`p-3 font-bold ${trade.result === 'win' ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>{trade.pnlPercent >= 0 ? '+' : ''}{trade.pnlPercent.toFixed(2)}%</td>
-                                <td className="p-3"><span className={`px-2 py-1 rounded text-xs font-bold ${trade.result === 'win' ? 'bg-[#00d395]/20 text-[#00d395]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{trade.result === 'win' ? '✅ 수익' : '❌ 손실'}</span></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                  {/* PRO 커스텀 지표 */}
+                  <div className={`${currentColors.cardBg} rounded-2xl p-6 border-2 border-[#00d395]`}>
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-2xl">💎</span>
+                      <h3 className={`text-xl font-bold ${currentColors.text}`}>체크리스트 커스텀지표</h3>
+                      <span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs font-bold">PRO</span>
+                    </div>
+                    <p className={`${currentColors.textSecondary} text-sm mb-4`}>
+                      트레이딩뷰 <strong className="text-[#00d395]">유료 구독자</strong> 전용 커스텀 지표
+                    </p>
+                    <div className={`${theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} rounded-xl p-4 mb-4`}>
+                      <h4 className="font-bold mb-3 text-[#00d395]">✅ 포함 기능</h4>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>7단계 체크리스트 자동 점수화</span></div>
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>진입가 / 목표가 / 손절가 자동 계산</span></div>
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>롱/숏/관망 시그널 표시</span></div>
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>모든 타임프레임 지원</span></div>
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>모든 자산 적용 (크립토/주식/선물)</span></div>
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>알림 기능 (텔레그램 연동 가능)</span></div>
+                        <div className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>평생 사용 (일회성 구매)</span></div>
                       </div>
                     </div>
-                  </>
-                )}
+                    <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'} rounded-xl p-4 mb-4`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`line-through ${currentColors.textSecondary}`}>정가 ₩590,000</span>
+                        <span className="bg-[#ff6b6b] text-white px-2 py-0.5 rounded text-xs font-bold">42% 할인</span>
+                      </div>
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-3xl font-bold text-[#00d395]">₩345,000</span>
+                        <span className={currentColors.textSecondary + ' text-sm'}>런칭 특가</span>
+                      </div>
+                      <p className="text-yellow-400 text-xs mt-2">* 선착순 50명 한정</p>
+                    </div>
+                    <a 
+                      href="https://t.me/xrp5555555" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="block w-full bg-[#00d395] text-black py-3 rounded-xl font-bold text-center hover:bg-[#00d395]/90 transition"
+                    >
+                      💬 구매 문의 (텔레그램)
+                    </a>
+                  </div>
+                </div>
+
+                {/* 설치 가이드 */}
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📖 지표 설치 가이드</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    {[
+                      { step: 1, title: '트레이딩뷰 가입', desc: 'tradingview.com 에서 계정 생성' },
+                      { step: 2, title: '초대 링크 수락', desc: '구매 후 받은 초대 링크로 지표 접근 권한 획득' },
+                      { step: 3, title: '즐겨찾기 추가', desc: '지표 페이지에서 ★ 버튼 클릭하여 즐겨찾기' },
+                      { step: 4, title: '차트에 적용', desc: '차트 → 지표 → 즐겨찾기에서 지표 선택' },
+                    ].map(item => (
+                      <div key={item.step} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
+                        <div className="w-8 h-8 bg-[#00d395] text-black rounded-full flex items-center justify-center font-bold mb-3">{item.step}</div>
+                        <h4 className={`font-bold mb-1 ${currentColors.text}`}>{item.title}</h4>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`mt-4 text-sm ${currentColors.textSecondary}`}>
+                    📄 상세 설치 가이드 PDF는 구매 시 함께 제공됩니다.
+                  </p>
+                </div>
               </>
             )}
+
+            {indicatorSection === 'backtest' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-2xl p-6">
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📈 백테스팅이란?</h3>
+                  <p className={currentColors.textSecondary}>
+                    과거 데이터를 기반으로 트레이딩 전략의 성능을 테스트하는 것입니다. 
+                    트레이딩뷰에서는 지표에 백테스트 기능이 내장되어 있어 신뢰할 수 있는 결과를 얻을 수 있습니다.
+                  </p>
+                </div>
+
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔧 트레이딩뷰에서 백테스트 하는 방법</h3>
+                  <div className="space-y-4">
+                    {[
+                      { step: 1, title: '전략 테스터 열기', desc: '차트 하단의 "전략 테스터" 탭을 클릭합니다.' },
+                      { step: 2, title: '지표를 전략으로 변환', desc: '체크리스트 지표는 전략 모드를 지원하여 백테스트가 가능합니다.' },
+                      { step: 3, title: '기간 설정', desc: '테스트할 기간을 설정합니다. (1개월 ~ 수년)' },
+                      { step: 4, title: '설정 조정', desc: '진입 조건, 청산 조건, 자본금 등을 설정합니다.' },
+                      { step: 5, title: '결과 분석', desc: '순이익, 승률, 최대 낙폭, 손익비 등을 확인합니다.' },
+                    ].map(item => (
+                      <div key={item.step} className={`flex gap-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                        <div className="w-8 h-8 bg-[#00d395] text-black rounded-full flex items-center justify-center font-bold flex-shrink-0">{item.step}</div>
+                        <div>
+                          <h4 className={`font-bold ${currentColors.text}`}>{item.title}</h4>
+                          <p className={`text-sm ${currentColors.textSecondary}`}>{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📊 백테스트 결과 해석</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { label: '순이익', desc: '테스트 기간 동안의 총 수익', icon: '💰' },
+                      { label: '승률', desc: '이긴 거래의 비율', icon: '🎯' },
+                      { label: '최대 낙폭', desc: '최고점 대비 최대 하락폭', icon: '📉' },
+                      { label: '손익비', desc: '평균 이익 / 평균 손실', icon: '⚖️' },
+                    ].map(item => (
+                      <div key={item.label} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}>
+                        <div className="text-3xl mb-2">{item.icon}</div>
+                        <h4 className={`font-bold ${currentColors.text}`}>{item.label}</h4>
+                        <p className={`text-xs ${currentColors.textSecondary}`}>{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {indicatorSection === 'deepbacktest' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-2xl p-6">
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔬 딥백테스팅이란?</h3>
+                  <p className={currentColors.textSecondary}>
+                    일반 백테스트보다 더 정밀한 테스트입니다. 틱 단위 데이터, 슬리피지, 수수료를 반영하여 실제 트레이딩 환경과 유사한 결과를 얻습니다.
+                  </p>
+                </div>
+
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>⚙️ 딥백테스트 설정 방법</h3>
+                  <div className="space-y-4">
+                    {[
+                      { title: '바 확대 (Bar Magnifier)', desc: '더 낮은 타임프레임 데이터로 정밀한 진입/청산 시점 계산 (트레이딩뷰 Premium 기능)' },
+                      { title: '슬리피지 설정', desc: '실제 체결가와 주문가의 차이를 반영. 보통 0.1~0.5% 설정' },
+                      { title: '수수료 반영', desc: '거래소 수수료를 포함하여 순수익 계산' },
+                      { title: '초기 자본금', desc: '실제 운용 예정 금액으로 설정하여 현실적인 결과 확인' },
+                      { title: '피라미딩', desc: '동일 방향 추가 진입 허용 여부 설정' },
+                    ].map((item, i) => (
+                      <div key={i} className={`p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                        <h4 className={`font-bold ${currentColors.text}`}>{item.title}</h4>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{item.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-2xl p-6`}>
+                  <h3 className={`text-xl font-bold mb-3 ${currentColors.text}`}>⚠️ 주의사항</h3>
+                  <ul className={`space-y-2 text-sm ${currentColors.textSecondary}`}>
+                    <li>• 딥백테스트는 트레이딩뷰 <strong className="text-yellow-400">Premium 플랜</strong> 이상에서 바 확대 기능 사용 가능</li>
+                    <li>• 과거 성과가 미래 수익을 보장하지 않습니다</li>
+                    <li>• 과최적화(Overfitting) 주의: 너무 많은 파라미터 조정은 역효과</li>
+                    <li>• 최소 1년 이상의 데이터로 테스트 권장</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {indicatorSection === 'automate' && (
+              <div className="space-y-6">
+                <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-2xl p-6">
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🤖 자동매매 연동이란?</h3>
+                  <p className={currentColors.textSecondary}>
+                    트레이딩뷰 알림을 거래소 API와 연결하여 시그널 발생 시 자동으로 주문이 실행되는 시스템입니다.
+                    직접 차트를 보지 않아도 24시간 트레이딩이 가능합니다.
+                  </p>
+                </div>
+
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔗 연동 가능한 거래소</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {['바이낸스', '바이비트', 'OKX', 'Bitget'].map(exchange => (
+                      <div key={exchange} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}>
+                        <span className={`font-bold ${currentColors.text}`}>{exchange}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📝 연동 방법 (개요)</h3>
+                  <div className="space-y-4">
+                    {[
+                      { step: 1, title: '거래소 API 키 발급', desc: '거래소에서 API Key와 Secret Key를 발급받습니다. (출금 권한은 비활성화 권장)' },
+                      { step: 2, title: '웹훅 서비스 선택', desc: '3Commas, Alertatron, PineConnector 등의 웹훅 서비스를 선택합니다.' },
+                      { step: 3, title: '트레이딩뷰 알림 설정', desc: '지표에서 알림 생성 → 웹훅 URL 입력 → 메시지 포맷 설정' },
+                      { step: 4, title: '테스트', desc: '소액으로 시그널 → 주문 실행이 정상 작동하는지 테스트합니다.' },
+                    ].map(item => (
+                      <div key={item.step} className={`flex gap-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                        <div className="w-8 h-8 bg-[#00d395] text-black rounded-full flex items-center justify-center font-bold flex-shrink-0">{item.step}</div>
+                        <div>
+                          <h4 className={`font-bold ${currentColors.text}`}>{item.title}</h4>
+                          <p className={`text-sm ${currentColors.textSecondary}`}>{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 면책조항 */}
+                <div className={`bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-500/50 rounded-2xl p-6`}>
+                  <h3 className="text-xl font-bold mb-4 text-[#ff6b6b]">⚠️ 중요 면책조항</h3>
+                  <div className={`space-y-3 text-sm ${currentColors.textSecondary}`}>
+                    <p><strong className="text-[#ff6b6b]">1. 자동매매는 전적으로 본인 책임입니다.</strong></p>
+                    <p>• API 키 관리, 거래소 설정, 자금 운용에 대한 모든 책임은 사용자에게 있습니다.</p>
+                    <p>• 시스템 오류, 네트워크 지연, 거래소 장애 등으로 인한 손실에 대해 당사는 책임지지 않습니다.</p>
+                    <p><strong className="text-[#ff6b6b]">2. 투자 손실 가능성</strong></p>
+                    <p>• 과거 백테스트 결과가 미래 수익을 보장하지 않습니다.</p>
+                    <p>• 레버리지 사용 시 원금 이상의 손실이 발생할 수 있습니다.</p>
+                    <p><strong className="text-[#ff6b6b]">3. 권장사항</strong></p>
+                    <p>• 반드시 소액으로 충분한 테스트 후 운용하세요.</p>
+                    <p>• 출금 권한이 없는 API 키를 사용하세요.</p>
+                    <p>• 감당 가능한 금액만 투자하세요.</p>
+                  </div>
+                </div>
+
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder} text-center`}>
+                  <p className={`mb-4 ${currentColors.textSecondary}`}>자동매매 연동 관련 상세 설정이 궁금하시면 문의해주세요.</p>
+                  <a 
+                    href="https://t.me/xrp5555555" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="inline-block bg-[#00d395] text-black px-8 py-3 rounded-xl font-bold hover:bg-[#00d395]/90 transition"
+                  >
+                    💬 텔레그램 문의
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* 공통 문의 섹션 */}
+            <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+              <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>💬 문의하기</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a 
+                  href="https://t.me/xrp5555555" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={`flex items-center gap-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5 hover:bg-white/10' : 'bg-gray-50 hover:bg-gray-100'} transition`}
+                >
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl">📱</div>
+                  <div>
+                    <h4 className={`font-bold ${currentColors.text}`}>텔레그램</h4>
+                    <p className={currentColors.textSecondary + ' text-sm'}>@xrp5555555</p>
+                  </div>
+                </a>
+                <div className={`flex items-center gap-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                  <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-2xl">📄</div>
+                  <div>
+                    <h4 className={`font-bold ${currentColors.text}`}>설치 가이드 PDF</h4>
+                    <p className={currentColors.textSecondary + ' text-sm'}>구매 시 제공</p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
