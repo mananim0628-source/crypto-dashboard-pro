@@ -15,6 +15,8 @@ type AdSlot = { id: string; title: string; description: string; link_url: string
 type AlertSettings = { id?: string; user_id: string; selected_coins: string[]; score_threshold: number; time_morning: boolean; time_afternoon: boolean; time_evening: boolean; time_night: boolean; alert_signal: boolean; alert_score_change: boolean; alert_price: boolean; telegram_id?: string | null }
 type PortfolioPosition = { id: string; user_id: string; coin_symbol: string; coin_name: string; position_type: 'LONG' | 'SHORT'; entry_price: number; target_price: number; stop_loss: number; amount?: number; entry_date: string; exit_price?: number; exit_date?: string; status: 'active' | 'closed' | 'cancelled'; notes?: string }
 type AlertNotification = { id: string; coin: string; type: 'signal' | 'score' | 'price'; message: string; time: Date; read: boolean }
+type SignalStats = { total_signals: number; wins: number; losses: number; pending: number; win_rate: number; avg_profit: number; max_profit: number; max_loss: number; signals_30d: number; wins_30d: number; win_rate_30d: number }
+type SignalHistory = { id: string; coin_symbol: string; signal_type: string; entry_price: number; target_price: number; stop_loss: number; score_total: number; result: 'win' | 'loss' | 'pending' | null; exit_price: number | null; profit_percent: number | null; signal_at: string; closed_at: string | null }
 
 const formatPrice = (price: number): string => {
   if (price === 0) return '$0'
@@ -71,6 +73,8 @@ export default function Dashboard() {
   const [showFavorites, setShowFavorites] = useState(true)
   const notificationRef = useRef<HTMLDivElement>(null)
   const [indicatorSection, setIndicatorSection] = useState<'intro' | 'backtest' | 'deepbacktest' | 'automate'>('intro')
+  const [signalStats, setSignalStats] = useState<SignalStats | null>(null)
+  const [recentSignals, setRecentSignals] = useState<SignalHistory[]>([])
 
   const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE', 'PEPE', 'BONK', 'FLOKI', 'WIF', 'ENA', 'PENDLE', 'JUP', 'WLD', 'STRK', 'PYTH', 'JTO', 'MEME', 'BLUR', 'ORDI', 'SATS', 'RATS', 'LEO', 'TON', 'TRX', 'HBAR', 'KAS', 'OKB', 'CRO', 'RUNE', 'STX', 'FTM', 'EGLD', 'FLOW', 'THETA', 'XTZ', 'NEO', 'KLAY', 'ZEC', 'IOTA', 'EOS']
   const router = useRouter()
@@ -136,6 +140,8 @@ export default function Dashboard() {
         try { const { data: adData } = await supabase.from('ad_slots').select('*').eq('is_active', true).order('display_order', { ascending: true }); if (mounted && adData) setAdSlots(adData) } catch (e) {}
         try { const { data: alertData } = await supabase.from('alert_settings').select('*').eq('user_id', session.user.id).single(); if (mounted) { if (alertData) { setAlertSettings(alertData); setSavedAlertSettings(alertData); setSliderValue(alertData.score_threshold); setInputValue(String(alertData.score_threshold)); if (alertData.telegram_id) setTelegramId(alertData.telegram_id) } else { setAlertSettings({ user_id: session.user.id, selected_coins: ['BTC', 'ETH'], score_threshold: 90, time_morning: true, time_afternoon: true, time_evening: true, time_night: false, alert_signal: true, alert_score_change: true, alert_price: true }) } } } catch (e) {}
         try { const { data: portfolioData } = await supabase.from('portfolio_positions').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }); if (mounted && portfolioData) setPortfolioPositions(portfolioData) } catch (e) {}
+        try { const { data: statsData } = await supabase.from('signal_stats').select('*').single(); if (mounted && statsData) setSignalStats(statsData) } catch (e) {}
+        try { const { data: signalsData } = await supabase.from('recent_signals').select('*').limit(10); if (mounted && signalsData) setRecentSignals(signalsData) } catch (e) {}
       } catch (error) { if (mounted) setLoading(false) }
     }
     init()
@@ -377,6 +383,58 @@ export default function Dashboard() {
               {favorites.length > 0 && (<section className="mb-10"><div className="flex items-center justify-between mb-4"><h2 className={`text-xl font-bold ${currentColors.text}`}>⭐ {txt('즐겨찾기', 'Favorites')} ({favorites.length})</h2><button type="button" onClick={() => setShowFavorites(!showFavorites)} className={`text-sm px-3 py-1 rounded-lg ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'}`}>{showFavorites ? txt('접기 ▲', 'Collapse ▲') : txt('펼치기 ▼', 'Expand ▼')}</button></div>{showFavorites && <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">{favoriteCoins.length > 0 ? favoriteCoins.map(coin => <CoinCard key={coin.id} coin={coin} />) : favorites.map(f => (<div key={f.id} className={`${currentColors.cardBg} rounded-2xl p-5 border ${currentColors.cardBorder}`}><span className={`text-xl font-bold ${currentColors.text}`}>{f.coin_symbol}</span><p className={`${currentColors.textSecondary} text-sm mt-2`}>{txt('로딩 중...', 'Loading...')}</p></div>))}</div>}</section>)}
               <section className="mb-10"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔥 핵심 코인', '🔥 Core Coins')}</h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">{coreCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div></section>
               {profile?.plan !== 'free' ? (<section className="mb-10"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('📈 상승 코인 TOP 6', '📈 Top Gainers')} <span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs">PRO</span></h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{topGainers.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div></section>) : (<section className="mb-10"><div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-2xl text-center py-12 px-6"><h2 className={`text-2xl font-bold mb-4 ${currentColors.text}`}>🔒 PRO {txt('전용', 'Only')}</h2><Link href="/pricing" className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold inline-block">{txt('업그레이드 →', 'Upgrade →')}</Link></div></section>)}
+              {/* 시그널 성과 통계 */}
+              {signalStats && (
+                <section className="mb-10">
+                  <h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🎯 시그널 성과', '🎯 Signal Performance')}</h2>
+                  <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+                      <div className={`${theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} rounded-xl p-4 text-center`}>
+                        <p className="text-3xl font-bold text-[#00d395]">{signalStats.win_rate_30d || 0}%</p>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{txt('30일 승률', '30D Win Rate')}</p>
+                      </div>
+                      <div className={`${theme === 'dark' ? 'bg-blue-500/10' : 'bg-blue-50'} rounded-xl p-4 text-center`}>
+                        <p className="text-3xl font-bold text-blue-400">{signalStats.signals_30d || 0}</p>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{txt('30일 시그널', '30D Signals')}</p>
+                      </div>
+                      <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}>
+                        <p className={`text-3xl font-bold ${currentColors.text}`}>{signalStats.wins}/{signalStats.losses}</p>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{txt('승/패', 'W/L')}</p>
+                      </div>
+                      <div className={`${theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} rounded-xl p-4 text-center`}>
+                        <p className="text-3xl font-bold text-[#00d395]">+{signalStats.max_profit || 0}%</p>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{txt('최대 수익', 'Max Profit')}</p>
+                      </div>
+                      <div className={`${theme === 'dark' ? 'bg-[#ff6b6b]/10' : 'bg-red-50'} rounded-xl p-4 text-center`}>
+                        <p className="text-3xl font-bold text-[#ff6b6b]">{signalStats.max_loss || 0}%</p>
+                        <p className={`text-sm ${currentColors.textSecondary}`}>{txt('최대 손실', 'Max Loss')}</p>
+                      </div>
+                    </div>
+                    {recentSignals.length > 0 && (
+                      <div>
+                        <h3 className={`font-bold mb-3 ${currentColors.text}`}>{txt('📋 최근 시그널', '📋 Recent Signals')}</h3>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead><tr className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{[txt('코인','Coin'), txt('시그널','Signal'), txt('진입가','Entry'), txt('결과','Result'), txt('수익률','P/L')].map(h => <th key={h} className={`text-left p-2 ${currentColors.textSecondary}`}>{h}</th>)}</tr></thead>
+                            <tbody>
+                              {recentSignals.slice(0, 5).map(s => (
+                                <tr key={s.id} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
+                                  <td className={`p-2 font-bold ${currentColors.text}`}>{s.coin_symbol}</td>
+                                  <td className="p-2"><span className={`px-2 py-0.5 rounded text-xs font-bold ${s.signal_type.includes('buy') ? 'bg-[#00d395]/20 text-[#00d395]' : s.signal_type === 'hold' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{s.signal_type.toUpperCase()}</span></td>
+                                  <td className={`p-2 ${currentColors.text}`}>${s.entry_price.toLocaleString()}</td>
+                                  <td className="p-2"><span className={`px-2 py-0.5 rounded text-xs font-bold ${s.result === 'win' ? 'bg-[#00d395]/20 text-[#00d395]' : s.result === 'loss' ? 'bg-[#ff6b6b]/20 text-[#ff6b6b]' : 'bg-yellow-500/20 text-yellow-400'}`}>{s.result === 'win' ? '✅' : s.result === 'loss' ? '❌' : '⏳'}</span></td>
+                                  <td className={`p-2 font-bold ${s.profit_percent && s.profit_percent > 0 ? 'text-[#00d395]' : s.profit_percent && s.profit_percent < 0 ? 'text-[#ff6b6b]' : currentColors.textSecondary}`}>{s.profit_percent ? `${s.profit_percent > 0 ? '+' : ''}${s.profit_percent}%` : '-'}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              )}
+
               <section><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('📊 시장 요약', '📊 Market Summary')}</h2><div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center"><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>{txt('분석 코인', 'Analyzed')}</p><p className={`text-2xl font-bold ${currentColors.text}`}>{coreCoins.length + topGainers.length}</p></div><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>{txt('매수', 'Buy')}</p><p className="text-2xl font-bold text-[#00d395]">{[...coreCoins, ...topGainers].filter(c => c.signal === 'buy' || c.signal === 'strong_buy').length}</p></div><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>{txt('관망', 'Hold')}</p><p className="text-2xl font-bold text-yellow-400">{[...coreCoins, ...topGainers].filter(c => c.signal === 'hold').length}</p></div><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>{txt('매도', 'Sell')}</p><p className="text-2xl font-bold text-[#ff6b6b]">{[...coreCoins, ...topGainers].filter(c => c.signal === 'sell' || c.signal === 'strong_sell').length}</p></div></div></div></section>
             </main>
             {/* 사이드바 */}
