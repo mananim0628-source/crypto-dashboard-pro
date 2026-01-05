@@ -126,6 +126,7 @@ export default function Dashboard() {
   const [coreCoins, setCoreCoins] = useState<AnalyzedCoin[]>([])
   const [topGainers, setTopGainers] = useState<AnalyzedCoin[]>([])
   const [favorites, setFavorites] = useState<Favorite[]>([])
+  const [favoriteCoins, setFavoriteCoins] = useState<AnalyzedCoin[]>([])
   const [adSlots, setAdSlots] = useState<AdSlot[]>([])
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResult, setSearchResult] = useState<AnalyzedCoin | null>(null)
@@ -162,6 +163,7 @@ export default function Dashboard() {
   const [showSearchDropdown, setShowSearchDropdown] = useState(false)
   const searchDropdownRef = useRef<HTMLDivElement>(null)
   const [telegramId, setTelegramId] = useState('')
+  const [showFavorites, setShowFavorites] = useState(true)
   const notificationRef = useRef<HTMLDivElement>(null)
 
   const allCoins = ['BTC', 'ETH', 'XRP', 'BNB', 'SOL', 'ADA', 'DOGE', 'MATIC', 'DOT', 'SHIB', 'AVAX', 'LINK', 'UNI', 'ATOM', 'LTC', 'ETC', 'XLM', 'ALGO', 'VET', 'FIL', 'AAVE', 'AXS', 'SAND', 'MANA', 'GALA', 'ENJ', 'CHZ', 'APE', 'LDO', 'ARB', 'OP', 'IMX', 'NEAR', 'APT', 'SUI', 'SEI', 'TIA', 'INJ', 'FET', 'RNDR', 'GRT', 'SNX', 'CRV', 'MKR', 'COMP', '1INCH', 'SUSHI', 'YFI', 'BAL', 'CAKE', 'PEPE', 'BONK', 'FLOKI', 'WIF', 'ENA', 'PENDLE', 'JUP', 'WLD', 'STRK', 'PYTH', 'JTO', 'MEME', 'BLUR', 'ORDI', 'SATS', 'RATS', 'LEO', 'TON', 'TRX', 'HBAR', 'KAS', 'OKB', 'CRO', 'RUNE', 'STX', 'FTM', 'EGLD', 'FLOW', 'THETA', 'XTZ', 'NEO', 'KLAY', 'ZEC', 'IOTA', 'EOS']
@@ -219,16 +221,34 @@ export default function Dashboard() {
     return analyzed
   }
 
-  // 다크모드 초기화 - 깜빡임 방지
+  // 즐겨찾기 코인 데이터 로드
+  const loadFavoriteCoinsData = async (favs: Favorite[]) => {
+    if (favs.length === 0) {
+      setFavoriteCoins([])
+      return
+    }
+    
+    const loadedCoins: AnalyzedCoin[] = []
+    
+    for (const fav of favs) {
+      try {
+        const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(fav.coin_symbol)}`)
+        const data = await response.json()
+        if (data.coin) {
+          loadedCoins.push(analyzeCoin(data.coin))
+        }
+      } catch (e) {
+        console.error(`Failed to load ${fav.coin_symbol}:`, e)
+      }
+    }
+    
+    setFavoriteCoins(loadedCoins)
+  }
+
   useLayoutEffect(() => {
     const saved = localStorage.getItem('dashboard-theme')
-    // 저장된 값이 없거나 'dark'이면 다크모드, 'light'일 때만 라이트모드
-    if (saved === 'light') {
-      setTheme('light')
-    } else {
-      setTheme('dark')
-      localStorage.setItem('dashboard-theme', 'dark')
-    }
+    if (saved === 'light') setTheme('light')
+    else { setTheme('dark'); localStorage.setItem('dashboard-theme', 'dark') }
     setThemeLoaded(true)
   }, [])
 
@@ -258,7 +278,15 @@ export default function Dashboard() {
         try { const response = await fetch('/api/crypto?action=core'); const data = await response.json(); if (mounted && data.coins) setCoreCoins(data.coins.map(analyzeCoin)) } catch (e) {}
         if (profileData?.plan !== 'free') { try { const gainersResponse = await fetch('/api/crypto?action=gainers'); const gainersData = await gainersResponse.json(); if (mounted && gainersData.coins) setTopGainers(gainersData.coins.slice(0, 6).map(analyzeCoin)) } catch (e) {} }
         setLastUpdate(new Date())
-        try { const { data: favData } = await supabase.from('favorites').select('*').eq('user_id', session.user.id); if (mounted && favData) setFavorites(favData) } catch (e) {}
+        // 즐겨찾기 로드
+        try { 
+          const { data: favData } = await supabase.from('favorites').select('*').eq('user_id', session.user.id)
+          if (mounted && favData) {
+            setFavorites(favData)
+            // 즐겨찾기 코인 데이터도 로드
+            await loadFavoriteCoinsData(favData)
+          }
+        } catch (e) {}
         try { const { data: adData } = await supabase.from('ad_slots').select('*').eq('is_active', true).order('display_order', { ascending: true }); if (mounted && adData) setAdSlots(adData) } catch (e) {}
         try { 
           const { data: alertData } = await supabase.from('alert_settings').select('*').eq('user_id', session.user.id).single()
@@ -272,7 +300,6 @@ export default function Dashboard() {
           }
         } catch (e) {}
         try { const { data: portfolioData } = await supabase.from('portfolio_positions').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }); if (mounted && portfolioData) setPortfolioPositions(portfolioData) } catch (e) {}
-        // DB에서 테마 불러오지 않음 - localStorage만 사용
       } catch (error) { if (mounted) setLoading(false) }
     }
     init()
@@ -301,45 +328,31 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return
     const interval = setInterval(async () => {
-      try { const response = await fetch('/api/crypto?action=core'); const data = await response.json(); if (data.coins) setCoreCoins(data.coins.map(analyzeCoin)); if (profile?.plan !== 'free') { const gainersResponse = await fetch('/api/crypto?action=gainers'); const gainersData = await gainersResponse.json(); if (gainersData.coins) setTopGainers(gainersData.coins.slice(0, 6).map(analyzeCoin)) }; setLastUpdate(new Date()); setCountdown(120) } catch (e) {}
+      try { 
+        const response = await fetch('/api/crypto?action=core'); const data = await response.json(); if (data.coins) setCoreCoins(data.coins.map(analyzeCoin))
+        if (profile?.plan !== 'free') { const gainersResponse = await fetch('/api/crypto?action=gainers'); const gainersData = await gainersResponse.json(); if (gainersData.coins) setTopGainers(gainersData.coins.slice(0, 6).map(analyzeCoin)) }
+        // 즐겨찾기 코인도 새로고침
+        if (favorites.length > 0) {
+          await loadFavoriteCoinsData(favorites)
+        }
+        setLastUpdate(new Date()); setCountdown(120) 
+      } catch (e) {}
     }, 120000)
     return () => clearInterval(interval)
-  }, [user, profile?.plan])
+  }, [user, profile?.plan, favorites])
 
   useEffect(() => { const timer = setInterval(() => setCountdown(prev => prev > 0 ? prev - 1 : 120), 1000); return () => clearInterval(timer) }, [])
 
-  // 검색 입력 처리 - 정확한 매칭 우선
   const handleSearchInput = async (query: string) => {
     setSearchQuery(query)
     if (!query.trim()) { setSearchSuggestions([]); setShowSearchDropdown(false); return }
-    
     const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
-    
-    // 정확히 일치하는 것 먼저, 그 다음 시작하는 것, 마지막으로 포함하는 것
     const exactMatch = allCoins.filter(c => c === queryUpper)
     const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
     const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
-    
     const localMatches = [...exactMatch, ...startsWith, ...includes].slice(0, 8).map(c => ({ symbol: c, name: c }))
-    
-    if (localMatches.length > 0) { 
-      setSearchSuggestions(localMatches)
-      setShowSearchDropdown(true) 
-    }
-    
-    // API에서도 검색
-    try { 
-      const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`)
-      const data = await response.json()
-      if (data.coin) { 
-        const apiResult = { symbol: data.coin.symbol.toUpperCase(), name: data.coin.name }
-        // API 결과가 로컬에 없으면 맨 앞에 추가
-        if (!localMatches.some(m => m.symbol === apiResult.symbol)) {
-          setSearchSuggestions([apiResult, ...localMatches].slice(0, 8))
-        }
-        setShowSearchDropdown(true) 
-      } 
-    } catch (e) {}
+    if (localMatches.length > 0) { setSearchSuggestions(localMatches); setShowSearchDropdown(true) }
+    try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`); const data = await response.json(); if (data.coin) { const apiResult = { symbol: data.coin.symbol.toUpperCase(), name: data.coin.name }; if (!localMatches.some(m => m.symbol === apiResult.symbol)) { setSearchSuggestions([apiResult, ...localMatches].slice(0, 8)) }; setShowSearchDropdown(true) } } catch (e) {}
   }
 
   const selectSearchCoin = async (symbol: string) => {
@@ -351,14 +364,11 @@ export default function Dashboard() {
   const searchAlertCoin = async (query: string) => {
     if (!query.trim()) { setAlertSearchResults([]); return }
     const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
-    
     const exactMatch = allCoins.filter(c => c === queryUpper)
     const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
     const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
-    
     const localResults = [...exactMatch, ...startsWith, ...includes]
     if (localResults.length > 0) { setAlertSearchResults(localResults.slice(0, 10)); return }
-    
     setAlertSearchLoading(true)
     try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`); const data = await response.json(); if (data.coin) setAlertSearchResults([data.coin.symbol.toUpperCase()]); else setAlertSearchResults([]) } catch (e) { setAlertSearchResults([]) }
     setAlertSearchLoading(false)
@@ -367,14 +377,11 @@ export default function Dashboard() {
   const searchPortfolioCoin = async (query: string) => {
     if (!query.trim()) { setPortfolioSearchResults(allCoins.slice(0, 20)); return }
     const queryUpper = query.toUpperCase().replace('USDT', '').replace('USD', '').trim()
-    
     const exactMatch = allCoins.filter(c => c === queryUpper)
     const startsWith = allCoins.filter(c => c.startsWith(queryUpper) && c !== queryUpper)
     const includes = allCoins.filter(c => c.includes(queryUpper) && !c.startsWith(queryUpper))
-    
     const localResults = [...exactMatch, ...startsWith, ...includes]
     if (localResults.length > 0) { setPortfolioSearchResults(localResults); return }
-    
     setPortfolioSearchLoading(true)
     try { const response = await fetch(`/api/crypto?action=search&query=${encodeURIComponent(queryUpper)}`); const data = await response.json(); if (data.coin) setPortfolioSearchResults([data.coin.symbol.toUpperCase()]); else setPortfolioSearchResults([]) } catch (e) { setPortfolioSearchResults([]) }
     setPortfolioSearchLoading(false)
@@ -415,9 +422,7 @@ export default function Dashboard() {
 
   const toggleTheme = async () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark'
-    setTheme(newTheme)
-    localStorage.setItem('dashboard-theme', newTheme)
-    // DB 저장은 하지 않음 - localStorage만 사용
+    setTheme(newTheme); localStorage.setItem('dashboard-theme', newTheme)
   }
 
   const calculatePortfolioStats = () => {
@@ -429,16 +434,27 @@ export default function Dashboard() {
   }
 
   const downloadPDF = () => {
-    const stats = calculatePortfolioStats(); const now = new Date(); const dateStr = now.toLocaleDateString('ko-KR'); const timeStr = now.toLocaleTimeString('ko-KR'); const longCount = portfolioPositions.filter(p => p.position_type === 'LONG').length; const shortCount = portfolioPositions.filter(p => p.position_type === 'SHORT').length
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>크립토 대시보드 PRO - 트레이딩 리포트</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Malgun Gothic',sans-serif;padding:40px;background:#fff;color:#333;line-height:1.6}.header{text-align:center;border-bottom:3px solid #00d395;padding-bottom:30px;margin-bottom:40px}.header h1{color:#00d395;font-size:28px;margin-bottom:10px}.section{margin-bottom:40px}.section h2{color:#333;font-size:18px;border-left:4px solid #00d395;padding-left:15px;margin-bottom:20px}.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.stat-card{background:#f8f9fa;padding:20px;border-radius:12px;text-align:center}.stat-value{font-size:28px;font-weight:bold;color:#00d395}.stat-value.negative{color:#ff6b6b}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f8f9fa;padding:12px 10px;text-align:left;border-bottom:2px solid #dee2e6}td{padding:12px 10px;border-bottom:1px solid #eee}.long{color:#00d395}.short{color:#ff6b6b}.summary-box{background:linear-gradient(135deg,#00d395,#00b383);color:white;padding:25px;border-radius:12px;margin-bottom:30px}.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.footer{text-align:center;margin-top:50px;padding-top:20px;border-top:1px solid #eee;color:#999;font-size:11px}</style></head><body><div class="header"><h1>🚀 크립토 대시보드 PRO</h1><p>트레이딩 리포트 - ${dateStr} ${timeStr}</p><p>사용자: ${profile?.nickname || user?.email?.split('@')[0]} (${profile?.plan?.toUpperCase()})</p></div><div class="summary-box"><h3>📊 트레이딩 성과</h3><div class="summary-grid"><div><div style="font-size:24px;font-weight:bold">${stats.total}</div><div style="font-size:11px;opacity:0.9">총 포지션</div></div><div><div style="font-size:24px;font-weight:bold">${stats.active}</div><div style="font-size:11px;opacity:0.9">활성</div></div><div><div style="font-size:24px;font-weight:bold">${stats.winRate}%</div><div style="font-size:11px;opacity:0.9">승률</div></div><div><div style="font-size:24px;font-weight:bold">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div style="font-size:11px;opacity:0.9">누적 수익률</div></div></div></div><div class="section"><h2>📈 성과 지표</h2><div class="stats-grid"><div class="stat-card"><div class="stat-value">${stats.active}</div><div>활성</div></div><div class="stat-card"><div class="stat-value">${stats.closed}</div><div>종료</div></div><div class="stat-card"><div class="stat-value long">${stats.wins}</div><div>수익</div></div><div class="stat-card"><div class="stat-value negative">${stats.losses}</div><div>손실</div></div></div></div><div class="section"><h2>📋 활성 포지션</h2><table><thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>목표가</th><th>손절가</th><th>손익비</th></tr></thead><tbody>${portfolioPositions.filter(p=>p.status==='active').map(p=>{const rr=p.position_type==='LONG'?((p.target_price-p.entry_price)/(p.entry_price-p.stop_loss)).toFixed(2):((p.entry_price-p.target_price)/(p.stop_loss-p.entry_price)).toFixed(2);return`<tr><td><strong>${p.coin_symbol}</strong></td><td class="${p.position_type.toLowerCase()}">${p.position_type}</td><td>$${p.entry_price.toLocaleString()}</td><td class="long">$${p.target_price.toLocaleString()}</td><td class="short">$${p.stop_loss.toLocaleString()}</td><td>1:${rr}</td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px">없음</td></tr>'}</tbody></table></div><div class="footer"><p>© 2025 크립토 대시보드 PRO</p></div></body></html>`
+    const stats = calculatePortfolioStats(); const now = new Date(); const dateStr = now.toLocaleDateString('ko-KR'); const timeStr = now.toLocaleTimeString('ko-KR')
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>크립토 대시보드 PRO - 트레이딩 리포트</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Malgun Gothic',sans-serif;padding:40px;background:#fff;color:#333;line-height:1.6}.header{text-align:center;border-bottom:3px solid #00d395;padding-bottom:30px;margin-bottom:40px}.header h1{color:#00d395;font-size:28px;margin-bottom:10px}.section{margin-bottom:40px}.section h2{color:#333;font-size:18px;border-left:4px solid #00d395;padding-left:15px;margin-bottom:20px}.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.stat-card{background:#f8f9fa;padding:20px;border-radius:12px;text-align:center}.stat-value{font-size:28px;font-weight:bold;color:#00d395}.stat-value.negative{color:#ff6b6b}table{width:100%;border-collapse:collapse;font-size:13px}th{background:#f8f9fa;padding:12px 10px;text-align:left;border-bottom:2px solid #dee2e6}td{padding:12px 10px;border-bottom:1px solid #eee}.long{color:#00d395}.short{color:#ff6b6b}.summary-box{background:linear-gradient(135deg,#00d395,#00b383);color:white;padding:25px;border-radius:12px;margin-bottom:30px}.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}.footer{text-align:center;margin-top:50px;padding-top:20px;border-top:1px solid #eee;color:#999;font-size:11px}</style></head><body><div class="header"><h1>🚀 크립토 대시보드 PRO</h1><p>트레이딩 리포트 - ${dateStr} ${timeStr}</p><p>사용자: ${profile?.nickname || user?.email?.split('@')[0]} (${profile?.plan?.toUpperCase()})</p></div><div class="summary-box"><h3>📊 트레이딩 성과</h3><div class="summary-grid"><div><div style="font-size:24px;font-weight:bold">${stats.total}</div><div style="font-size:11px;opacity:0.9">총 포지션</div></div><div><div style="font-size:24px;font-weight:bold">${stats.active}</div><div style="font-size:11px;opacity:0.9">활성</div></div><div><div style="font-size:24px;font-weight:bold">${stats.winRate}%</div><div style="font-size:11px;opacity:0.9">승률</div></div><div><div style="font-size:24px;font-weight:bold">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div style="font-size:11px;opacity:0.9">누적 수익률</div></div></div></div><div class="section"><h2>📋 활성 포지션</h2><table><thead><tr><th>코인</th><th>방향</th><th>진입가</th><th>목표가</th><th>손절가</th><th>손익비</th></tr></thead><tbody>${portfolioPositions.filter(p=>p.status==='active').map(p=>{const rr=p.position_type==='LONG'?((p.target_price-p.entry_price)/(p.entry_price-p.stop_loss)).toFixed(2):((p.entry_price-p.target_price)/(p.stop_loss-p.entry_price)).toFixed(2);return`<tr><td><strong>${p.coin_symbol}</strong></td><td class="${p.position_type.toLowerCase()}">${p.position_type}</td><td>$${p.entry_price.toLocaleString()}</td><td class="long">$${p.target_price.toLocaleString()}</td><td class="short">$${p.stop_loss.toLocaleString()}</td><td>1:${rr}</td></tr>`}).join('')||'<tr><td colspan="6" style="text-align:center;padding:30px">없음</td></tr>'}</tbody></table></div><div class="footer"><p>© 2025 크립토 대시보드 PRO</p></div></body></html>`
     const win = window.open('', '_blank'); if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
   }
 
   const toggleFavorite = async (coin: AnalyzedCoin) => {
     if (!user) return
     const existing = favorites.find(f => f.coin_id === coin.id)
-    if (existing) { await supabase.from('favorites').delete().eq('id', existing.id); setFavorites(favorites.filter(f => f.id !== existing.id)) }
-    else { if (profile?.plan === 'free' && favorites.length >= 3) { alert('무료는 3개까지'); return }; const { data } = await supabase.from('favorites').insert({ user_id: user.id, coin_id: coin.id, coin_symbol: coin.symbol, coin_name: coin.name }).select().single(); if (data) setFavorites([data, ...favorites]) }
+    if (existing) { 
+      await supabase.from('favorites').delete().eq('id', existing.id)
+      const newFavs = favorites.filter(f => f.id !== existing.id)
+      setFavorites(newFavs)
+      setFavoriteCoins(favoriteCoins.filter(fc => fc.id !== coin.id))
+    } else { 
+      if (profile?.plan === 'free' && favorites.length >= 3) { alert('무료는 3개까지'); return }
+      const { data } = await supabase.from('favorites').insert({ user_id: user.id, coin_id: coin.id, coin_symbol: coin.symbol, coin_name: coin.name }).select().single()
+      if (data) {
+        setFavorites([data, ...favorites])
+        setFavoriteCoins([coin, ...favoriteCoins])
+      }
+    }
   }
 
   const handleAdClick = async (ad: AdSlot) => { try { await supabase.rpc('increment_ad_click', { ad_id: ad.id }) } catch (e) {}; window.open(ad.link_url, '_blank') }
@@ -467,12 +483,12 @@ export default function Dashboard() {
 
   const AdCard = ({ ad }: { ad: AdSlot }) => (<div className={`bg-gradient-to-r ${ad.bg_color || 'from-purple-500/20 to-blue-500/20'} border ${ad.border_color || 'border-purple-500/30'} rounded-xl cursor-pointer hover:scale-[1.02] transition-all p-3`} onClick={() => handleAdClick(ad)}><div className="flex items-center gap-3"><span className="text-2xl">{ad.icon || '📢'}</span><div className="flex-1 min-w-0"><p className="font-semibold text-white text-sm">{ad.title}</p><p className="text-white/70 truncate text-xs">{ad.description}</p></div><span className="text-[#00d395] text-xs font-semibold whitespace-nowrap">{ad.link_text || '바로가기'} →</span></div></div>)
 
-  const CoinCard = ({ coin }: { coin: AnalyzedCoin }) => {
+  const CoinCard = ({ coin, showFavButton = true }: { coin: AnalyzedCoin, showFavButton?: boolean }) => {
     const isPro = profile?.plan !== 'free'
     const isFavorited = favorites.some(f => f.coin_id === coin.id)
     return (
       <div className={`${currentColors.cardBg} rounded-2xl p-5 border cursor-pointer hover:border-[#00d395]/50 transition-all relative ${coin.signal === 'strong_buy' || coin.signal === 'buy' ? 'border-[#00d395]/30' : coin.signal === 'hold' ? 'border-yellow-500/30' : 'border-[#ff6b6b]/30'}`} onClick={() => { setSelectedCoin(coin); setShowDetail(true) }}>
-        <button onClick={(e) => { e.stopPropagation(); toggleFavorite(coin) }} className={`absolute top-3 right-3 text-xl ${isFavorited ? 'text-yellow-400' : 'text-white/30 hover:text-yellow-400'}`}>{isFavorited ? '★' : '☆'}</button>
+        {showFavButton && <button onClick={(e) => { e.stopPropagation(); toggleFavorite(coin) }} className={`absolute top-3 right-3 text-xl ${isFavorited ? 'text-yellow-400' : 'text-white/30 hover:text-yellow-400'}`}>{isFavorited ? '★' : '☆'}</button>}
         <div className="flex justify-between items-start mb-4 pr-8"><div><div className="flex items-center gap-2"><span className={`text-xl font-bold ${currentColors.text}`}>{coin.symbol.toUpperCase()}</span><span className={`text-xs px-2 py-0.5 rounded ${coin.scores.total >= 95 ? 'bg-[#00d395]/20 text-[#00d395]' : coin.scores.total >= 70 ? 'bg-yellow-500/20 text-yellow-400' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{coin.scores.total}/140</span></div><p className={currentColors.textSecondary + ' text-sm'}>{coin.name}</p></div><SignalBadge signal={coin.signal} /></div>
         <div className="mb-4"><p className="text-2xl font-bold text-[#00d395]">{formatPrice(coin.current_price)}</p><p className={`text-sm ${coin.price_change_percentage_24h >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>{coin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.price_change_percentage_24h || 0).toFixed(2)}%</p></div>
         {isPro ? (<div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-3 space-y-2`}><div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>진입가</span><span className="text-[#00d395] font-semibold">{formatPrice(coin.entry_price)}</span></div><div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>목표가</span><span className="text-blue-400 font-semibold">{formatPrice(coin.target_price)}</span></div><div className="flex justify-between"><span className={currentColors.textSecondary + ' text-sm'}>손절가</span><span className="text-[#ff6b6b] font-semibold">{formatPrice(coin.stop_loss)}</span></div><div className={`flex justify-between pt-2 border-t ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><span className={currentColors.textSecondary + ' text-sm'}>손익비</span><span className="text-yellow-400 font-bold">{coin.risk_reward}</span></div></div>) : (<div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}><p className={currentColors.textSecondary + ' text-sm'}>🔒 PRO 전용</p></div>)}
@@ -481,7 +497,6 @@ export default function Dashboard() {
     )
   }
 
-  // 로딩 화면도 다크모드로 고정
   if (!themeLoaded || loading) return (<div className="min-h-screen flex items-center justify-center bg-[#0a0a14]"><div className="text-center"><div className="w-12 h-12 border-4 border-[#00d395] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div><p className="text-white">로딩 중...</p></div></div>)
 
   const sidebarAds = adSlots.filter(ad => ad.position === 'sidebar')
@@ -513,9 +528,53 @@ export default function Dashboard() {
           <div className="flex gap-6">
             <main className="flex-1 min-w-0">
               {profile?.plan !== 'free' && (<div className="mb-8 relative" ref={searchDropdownRef}><div className="flex gap-3"><input type="text" value={searchQuery} onChange={(e) => handleSearchInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} onFocus={() => searchQuery && setShowSearchDropdown(true)} placeholder="코인명 입력 (예: ENA, PEPE, FLOKI) - USDT 제외" className={`flex-1 ${theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-white border-gray-200'} border rounded-xl px-4 py-3 focus:outline-none focus:border-[#00d395]`} /><button type="button" onClick={handleSearch} disabled={searchLoading} className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold">{searchLoading ? '검색 중...' : '🔍 분석'}</button></div>{showSearchDropdown && searchSuggestions.length > 0 && (<div className={`absolute left-0 right-24 top-14 rounded-xl border shadow-2xl z-50 ${currentColors.cardBg} ${currentColors.cardBorder}`}>{searchSuggestions.map((s, idx) => (<button key={idx} type="button" onClick={() => selectSearchCoin(s.symbol)} className={`w-full px-4 py-3 text-left hover:bg-[#00d395]/20 flex justify-between items-center ${idx !== searchSuggestions.length - 1 ? `border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}` : ''}`}><span className={`font-bold ${currentColors.text}`}>{s.symbol}</span><span className={currentColors.textSecondary}>{s.name}</span></button>))}</div>)}</div>)}
+              
               {searchResult && <div className="mb-8"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔍 검색 결과</h2><div className="max-w-md"><CoinCard coin={searchResult} /></div></div>}
+              
+              {/* 즐겨찾기 섹션 */}
+              {favorites.length > 0 && (
+                <section className="mb-10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className={`text-xl font-bold ${currentColors.text}`}>⭐ 즐겨찾기 ({favorites.length}개)</h2>
+                    <button 
+                      type="button" 
+                      onClick={() => setShowFavorites(!showFavorites)}
+                      className={`text-sm px-3 py-1 rounded-lg ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}
+                    >
+                      {showFavorites ? '접기 ▲' : '펼치기 ▼'}
+                    </button>
+                  </div>
+                  {showFavorites && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                      {favoriteCoins.length > 0 ? (
+                        favoriteCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)
+                      ) : (
+                        // 로딩 중이거나 데이터 없을 때 심볼만 표시
+                        favorites.map(fav => (
+                          <div key={fav.id} className={`${currentColors.cardBg} rounded-2xl p-5 border ${currentColors.cardBorder}`}>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-xl font-bold ${currentColors.text}`}>{fav.coin_symbol.toUpperCase()}</span>
+                              <button 
+                                onClick={() => {
+                                  supabase.from('favorites').delete().eq('id', fav.id)
+                                  setFavorites(favorites.filter(f => f.id !== fav.id))
+                                }}
+                                className="text-yellow-400 text-xl"
+                              >★</button>
+                            </div>
+                            <p className={`${currentColors.textSecondary} text-sm mt-2`}>로딩 중...</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
+              
               <section className="mb-10"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>🔥 핵심 코인</h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">{coreCoins.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div></section>
+              
               {profile?.plan !== 'free' ? (<section className="mb-10"><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📈 상승 코인 TOP 6 <span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs">PRO</span></h2><div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">{topGainers.map(coin => <CoinCard key={coin.id} coin={coin} />)}</div></section>) : (<section className="mb-10"><div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/30 rounded-2xl text-center py-12 px-6"><h2 className={`text-2xl font-bold mb-4 ${currentColors.text}`}>🔒 PRO 기능</h2><Link href="/pricing" className="bg-[#00d395] text-black px-8 py-3 rounded-xl font-semibold inline-block">업그레이드 →</Link></div></section>)}
+              
               <section><h2 className={`text-xl font-bold mb-4 ${currentColors.text}`}>📊 시장 요약</h2><div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center"><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>분석 코인</p><p className={`text-2xl font-bold ${currentColors.text}`}>{coreCoins.length + topGainers.length}</p></div><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>매수</p><p className="text-2xl font-bold text-[#00d395]">{[...coreCoins, ...topGainers].filter(c => c.signal === 'buy' || c.signal === 'strong_buy').length}</p></div><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>관망</p><p className="text-2xl font-bold text-yellow-400">{[...coreCoins, ...topGainers].filter(c => c.signal === 'hold').length}</p></div><div><p className={`${currentColors.textSecondary} text-sm mb-1`}>매도</p><p className="text-2xl font-bold text-[#ff6b6b]">{[...coreCoins, ...topGainers].filter(c => c.signal === 'sell' || c.signal === 'strong_sell').length}</p></div></div></div></section>
             </main>
             <aside className="hidden xl:block w-72 flex-shrink-0"><div className="sticky top-24 space-y-6"><div><h3 className={`text-lg font-bold mb-3 ${currentColors.text}`}>📢 소통 채널</h3><div className="space-y-2">{ownAds.length > 0 ? ownAds.map(ad => <AdCard key={ad.id} ad={ad} />) : <p className={currentColors.textSecondary + ' text-sm'}>등록된 채널이 없습니다</p>}</div></div><div className={`border-t ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'} pt-6`}><h4 className={`text-sm ${currentColors.textSecondary} mb-3`}>💎 파트너</h4><div className="space-y-2">{sponsoredAds.length > 0 ? sponsoredAds.map(ad => <AdCard key={ad.id} ad={ad} />) : (<div className={`${currentColors.cardBg} border ${currentColors.cardBorder} rounded-xl p-4 text-center`}><p className={currentColors.textSecondary + ' text-sm'}>광고 문의</p><p className="text-[#00d395] text-xs mt-1">admin@example.com</p></div>)}</div></div></div></aside>
