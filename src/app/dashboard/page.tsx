@@ -411,8 +411,8 @@ export default function Dashboard() {
               <div className={`hidden md:block text-sm ${currentColors.textSecondary}`}>{lastUpdate.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US')} | <span className="text-[#00d395]">{countdown}s</span></div>
               <span className={`hidden lg:block ${currentColors.textSecondary}`}>{profile?.nickname || user?.email?.split('@')[0]}</span>
               <Link href="/pricing" className="hidden md:block text-sm text-[#00d395]">{txt('요금제', 'Pricing')}</Link>
-              <button type="button" onClick={() => supabase.auth.signOut()} className={`text-xs md:text-sm ${currentColors.textSecondary}`}>{txt('로그아웃', 'Logout')}</button>
               <div className="relative" ref={notificationRef}><button type="button" onClick={() => setShowNotifications(!showNotifications)} className={`relative p-2 rounded-full ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}>🔔{unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-[#ff6b6b] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>{showNotifications && (<div className={`absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl border shadow-2xl z-50 ${currentColors.cardBg} ${currentColors.cardBorder}`}><div className="p-3 border-b flex justify-between items-center"><span className={`font-bold ${currentColors.text}`}>🔔 {txt('알림', 'Notifications')}</span>{notifications.length > 0 && <button type="button" onClick={markAllRead} className="text-xs text-[#00d395]">{txt('모두 읽음', 'Mark all read')}</button>}</div>{notifications.length === 0 ? <div className={`p-6 text-center ${currentColors.textSecondary}`}>{txt('알림 없음', 'No notifications')}</div> : notifications.slice(0, 10).map(n => (<div key={n.id} className={`p-3 border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} ${!n.read ? (theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50') : ''}`}><p className={`text-sm ${currentColors.text}`}>{n.message}</p><p className={`text-xs ${currentColors.textSecondary} mt-1`}>{n.time.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US')}</p></div>))}</div>)}</div>
+              <button type="button" onClick={() => supabase.auth.signOut()} className={`text-xs md:text-sm ${currentColors.textSecondary}`}>{txt('로그아웃', 'Logout')}</button>
             </div>
           </div>
         </div>
@@ -463,13 +463,15 @@ export default function Dashboard() {
                         <h3 className={`font-bold mb-3 ${currentColors.text}`}>{txt('📋 최근 시그널', '📋 Recent Signals')}</h3>
                         <div className="overflow-x-auto">
                           <table className="w-full text-sm">
-                            <thead><tr className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{[txt('코인','Coin'), txt('시그널','Signal'), txt('진입가','Entry'), txt('결과','Result'), txt('수익률','P/L')].map(h => <th key={h} className={`text-left p-2 ${currentColors.textSecondary}`}>{h}</th>)}</tr></thead>
+                            <thead><tr className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{[txt('코인','Coin'), txt('시그널','Signal'), txt('진입가','Entry'), txt('목표가','Target'), txt('손절가','Stop'), txt('결과','Result'), txt('수익률','P/L')].map(h => <th key={h} className={`text-left p-2 ${currentColors.textSecondary}`}>{h}</th>)}</tr></thead>
                             <tbody>
                               {recentSignals.slice(0, 5).map(s => (
                                 <tr key={s.id} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
-                                  <td className={`p-2 font-bold ${currentColors.text}`}>{s.coin_symbol}</td>
+                                  <td className={`p-2 font-bold ${currentColors.text}`}>{s.coin_symbol.toUpperCase()}</td>
                                   <td className="p-2"><span className={`px-2 py-0.5 rounded text-xs font-bold ${s.signal_type.includes('buy') ? 'bg-[#00d395]/20 text-[#00d395]' : s.signal_type === 'hold' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{s.signal_type.toUpperCase()}</span></td>
                                   <td className={`p-2 ${currentColors.text}`}>${s.entry_price.toLocaleString()}</td>
+                                  <td className="p-2 text-blue-400">${s.target_price.toLocaleString()}</td>
+                                  <td className="p-2 text-[#ff6b6b]">${s.stop_loss.toLocaleString()}</td>
                                   <td className="p-2"><span className={`px-2 py-0.5 rounded text-xs font-bold ${s.result === 'win' ? 'bg-[#00d395]/20 text-[#00d395]' : s.result === 'loss' ? 'bg-[#ff6b6b]/20 text-[#ff6b6b]' : 'bg-yellow-500/20 text-yellow-400'}`}>{s.result === 'win' ? '✅' : s.result === 'loss' ? '❌' : '⏳'}</span></td>
                                   <td className={`p-2 font-bold ${s.profit_percent && s.profit_percent > 0 ? 'text-[#00d395]' : s.profit_percent && s.profit_percent < 0 ? 'text-[#ff6b6b]' : currentColors.textSecondary}`}>{s.profit_percent ? `${s.profit_percent > 0 ? '+' : ''}${s.profit_percent}%` : '-'}</td>
                                 </tr>
