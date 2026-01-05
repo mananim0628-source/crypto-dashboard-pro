@@ -174,6 +174,56 @@ export default function Dashboard() {
   
   const getUnrealizedPnL = (p: any) => { const currentPrice = getCurrentPrice(p.coin_symbol); if (!currentPrice) return null; return p.position_type === 'LONG' ? ((currentPrice - p.entry_price) / p.entry_price) * 100 : ((p.entry_price - currentPrice) / p.entry_price) * 100 }
 
+  // 포트폴리오 포지션 자동 종료 체크
+  useEffect(() => {
+    const checkAndClosePositions = async () => {
+      if (!user || portfolioPositions.length === 0 || coreCoins.length === 0) return
+      
+      for (const position of portfolioPositions) {
+        if (position.status !== 'active') continue
+        
+        const currentPrice = getCurrentPrice(position.coin_symbol)
+        if (!currentPrice) continue
+        
+        let shouldClose = false
+        let result: 'win' | 'loss' | null = null
+        
+        if (position.position_type === 'LONG') {
+          if (currentPrice >= position.target_price) { shouldClose = true; result = 'win' }
+          else if (currentPrice <= position.stop_loss) { shouldClose = true; result = 'loss' }
+        } else {
+          if (currentPrice <= position.target_price) { shouldClose = true; result = 'win' }
+          else if (currentPrice >= position.stop_loss) { shouldClose = true; result = 'loss' }
+        }
+        
+        if (shouldClose && result) {
+          const pnl = position.position_type === 'LONG' 
+            ? ((currentPrice - position.entry_price) / position.entry_price) * 100
+            : ((position.entry_price - currentPrice) / position.entry_price) * 100
+          
+          await supabase.from('portfolio_positions').update({
+            status: 'closed',
+            exit_price: currentPrice,
+            closed_at: new Date().toISOString()
+          }).eq('id', position.id)
+          
+          setPortfolioPositions(prev => prev.map(p => 
+            p.id === position.id ? { ...p, status: 'closed', exit_price: currentPrice } : p
+          ))
+          
+          // 알림 추가
+          const msg = result === 'win' 
+            ? `🎉 ${position.coin_symbol} ${position.position_type} 목표가 도달! +${pnl.toFixed(2)}%`
+            : `⚠️ ${position.coin_symbol} ${position.position_type} 손절가 도달! ${pnl.toFixed(2)}%`
+          setNotifications(prev => [{ id: Date.now(), message: msg, time: new Date(), read: false }, ...prev])
+          setUnreadCount(prev => prev + 1)
+        }
+      }
+    }
+    
+    checkAndClosePositions()
+  }, [coreCoins, topGainers])
+
   // 시그널 자동 저장 (90점 이상 시그널만)
   const savedSignalsRef = useRef<Set<string>>(new Set())
   
