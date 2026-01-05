@@ -215,7 +215,7 @@ export default function Dashboard() {
           const msg = result === 'win' 
             ? `🎉 ${position.coin_symbol} ${position.position_type} 목표가 도달! +${pnl.toFixed(2)}%`
             : `⚠️ ${position.coin_symbol} ${position.position_type} 손절가 도달! ${pnl.toFixed(2)}%`
-          setNotifications(prev => [{ id: Date.now(), message: msg, time: new Date(), read: false }, ...prev])
+          setNotifications(prev => [{ id: `${position.coin_symbol}-close-${Date.now()}`, coin: position.coin_symbol, type: 'price' as const, message: msg, time: new Date(), read: false }, ...prev])
           setUnreadCount(prev => prev + 1)
         }
       }
