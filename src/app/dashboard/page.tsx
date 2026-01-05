@@ -242,8 +242,8 @@ export default function Dashboard() {
           
           // 알림 추가
           const msg = result === 'win' 
-            ? `🎉 ${position.coin_symbol} ${position.position_type} 목표가 도달! +${pnl.toFixed(2)}%`
-            : ⚠️ ${position.coin_symbol} ${position.position_type} 손절가 도달! ${pnl.toFixed(2)}%`
+            ? `[WIN] ${position.coin_symbol} ${position.position_type} ${lang === 'ko' ? '목표가 도달!' : 'Target reached!'} +${pnl.toFixed(2)}%`
+            : `[LOSS] ${position.coin_symbol} ${position.position_type} ${lang === 'ko' ? '손절가 도달!' : 'Stop loss hit!'} ${pnl.toFixed(2)}%`
           setNotifications(prev => [{ id: `${position.coin_symbol}-close-${Date.now()}`, coin: position.coin_symbol, type: 'price' as const, message: msg, time: new Date(), read: false }, ...prev])
         }
       }
