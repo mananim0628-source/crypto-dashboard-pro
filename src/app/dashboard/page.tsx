@@ -168,9 +168,132 @@ export default function Dashboard() {
     const stats = calculatePortfolioStats()
     const now = new Date()
     const dateStr = now.toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US')
+    const timeStr = now.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US')
     const title = txt('크립토 대시보드 PRO - 트레이딩 리포트', 'Crypto Dashboard PRO - Trading Report')
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Malgun Gothic',sans-serif;padding:40px;background:#fff;color:#333}.header{text-align:center;border-bottom:3px solid #00d395;padding-bottom:30px;margin-bottom:40px}.header h1{color:#00d395}table{width:100%;border-collapse:collapse;margin-top:20px}th{background:#f8f9fa;padding:12px;text-align:left;border-bottom:2px solid #dee2e6}td{padding:12px;border-bottom:1px solid #eee}.long{color:#00d395}.short{color:#ff6b6b}.summary-box{background:linear-gradient(135deg,#00d395,#00b383);color:white;padding:25px;border-radius:12px;margin-bottom:30px}.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}</style></head><body><div class="header"><h1>🚀 ${title}</h1><p>${dateStr}</p></div><div class="summary-box"><div class="summary-grid"><div><div style="font-size:24px;font-weight:bold">${stats.total}</div><div>${txt('총 포지션', 'Total')}</div></div><div><div style="font-size:24px;font-weight:bold">${stats.active}</div><div>${txt('활성', 'Active')}</div></div><div><div style="font-size:24px;font-weight:bold">${stats.winRate}%</div><div>${txt('승률', 'Win Rate')}</div></div><div><div style="font-size:24px;font-weight:bold">${parseFloat(stats.totalPnL)>=0?'+':''}${stats.totalPnL}%</div><div>PnL</div></div></div></div><table><thead><tr><th>${txt('코인','Coin')}</th><th>${txt('방향','Dir')}</th><th>${txt('진입가','Entry')}</th><th>${txt('목표가','Target')}</th><th>${txt('손절가','Stop')}</th><th>${txt('상태','Status')}</th></tr></thead><tbody>${portfolioPositions.map(p=>`<tr><td>${p.coin_symbol}</td><td class="${p.position_type.toLowerCase()}">${p.position_type}</td><td>$${p.entry_price.toLocaleString()}</td><td>$${p.target_price.toLocaleString()}</td><td>$${p.stop_loss.toLocaleString()}</td><td>${p.status==='active'?txt('활성','Active'):txt('종료','Closed')}</td></tr>`).join('')}</tbody></table></body></html>`
-    const win = window.open('', '_blank'); if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
+    
+    const longCount = portfolioPositions.filter(p => p.position_type === 'LONG').length
+    const shortCount = portfolioPositions.filter(p => p.position_type === 'SHORT').length
+    const activeCount = portfolioPositions.filter(p => p.status === 'active').length
+    const closedCount = portfolioPositions.filter(p => p.status === 'closed').length
+    
+    const insights: string[] = []
+    if (parseFloat(stats.winRate) >= 60) insights.push(txt('🌟 승률이 60% 이상으로 우수합니다!', '🌟 Win rate above 60% - Excellent!'))
+    else if (parseFloat(stats.winRate) >= 40) insights.push(txt('📊 승률이 평균 수준입니다.', '📊 Win rate is average.'))
+    else if (stats.total > 0) insights.push(txt('⚠️ 승률 개선이 필요합니다.', '⚠️ Win rate needs improvement.'))
+    if (parseFloat(stats.totalPnL) > 0) insights.push(txt('💰 총 수익이 플러스입니다!', '💰 Total PnL is positive!'))
+    else if (parseFloat(stats.totalPnL) < 0) insights.push(txt('📉 손실을 줄이는 전략이 필요합니다.', '📉 Need loss reduction strategy.'))
+    if (stats.active > 0) insights.push(txt(`🔥 현재 ${stats.active}개 포지션 활성 중`, `🔥 ${stats.active} active positions`))
+    
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${title}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; background: #fff; color: #333; line-height: 1.6; }
+    .header { text-align: center; border-bottom: 3px solid #00d395; padding-bottom: 30px; margin-bottom: 40px; }
+    .header h1 { color: #00d395; font-size: 28px; margin-bottom: 8px; }
+    .header p { color: #666; font-size: 14px; }
+    .summary-box { background: linear-gradient(135deg, #00d395, #00b383); color: white; padding: 30px; border-radius: 16px; margin-bottom: 30px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
+    .summary-item { background: rgba(255,255,255,0.15); padding: 20px; border-radius: 12px; }
+    .summary-item .value { font-size: 32px; font-weight: bold; }
+    .summary-item .label { font-size: 14px; opacity: 0.9; margin-top: 5px; }
+    .section { margin-bottom: 30px; }
+    .section-title { font-size: 18px; font-weight: bold; color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 30px; }
+    .stat-card { background: #f8f9fa; padding: 20px; border-radius: 12px; text-align: center; }
+    .stat-card .icon { font-size: 24px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 24px; font-weight: bold; }
+    .stat-card .label { font-size: 12px; color: #666; margin-top: 5px; }
+    .stat-card.green .value { color: #00d395; }
+    .stat-card.red .value { color: #ff6b6b; }
+    .stat-card.blue .value { color: #3b82f6; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th { background: #f8f9fa; padding: 14px; text-align: left; border-bottom: 2px solid #dee2e6; font-weight: 600; }
+    td { padding: 14px; border-bottom: 1px solid #eee; }
+    tr:hover { background: #f8f9fa; }
+    .long { color: #00d395; font-weight: bold; }
+    .short { color: #ff6b6b; font-weight: bold; }
+    .active-badge { background: #fef3c7; color: #d97706; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .closed-badge { background: #e5e7eb; color: #6b7280; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+    .insights-box { background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 1px solid #bae6fd; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+    .insight-item { padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .insight-item:last-child { border-bottom: none; }
+    .position-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px; }
+    .position-stat-box { background: #f8f9fa; padding: 20px; border-radius: 12px; }
+    .position-stat-box h4 { font-size: 14px; color: #666; margin-bottom: 15px; }
+    .bar-container { margin-bottom: 12px; }
+    .bar-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+    .bar-bg { height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 4px; }
+    .bar-fill.green { background: #00d395; }
+    .bar-fill.red { background: #ff6b6b; }
+    .bar-fill.yellow { background: #f59e0b; }
+    .bar-fill.gray { background: #9ca3af; }
+    .footer { text-align: center; padding-top: 30px; border-top: 1px solid #eee; color: #999; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🚀 ${title}</h1>
+    <p>${dateStr} ${timeStr} ${txt('기준', 'as of')}</p>
+  </div>
+
+  <div class="summary-box">
+    <div class="summary-grid">
+      <div class="summary-item"><div class="value">${stats.total}</div><div class="label">${txt('총 포지션', 'Total Positions')}</div></div>
+      <div class="summary-item"><div class="value">${stats.active}</div><div class="label">${txt('활성 포지션', 'Active')}</div></div>
+      <div class="summary-item"><div class="value">${stats.winRate}%</div><div class="label">${txt('승률', 'Win Rate')}</div></div>
+      <div class="summary-item"><div class="value">${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%</div><div class="label">${txt('총 수익률', 'Total PnL')}</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📈 ${txt('성과 분석', 'Performance Analysis')}</div>
+    <div class="stats-grid">
+      <div class="stat-card green"><div class="icon">🏆</div><div class="value">${stats.wins}</div><div class="label">${txt('승리', 'Wins')}</div></div>
+      <div class="stat-card red"><div class="icon">📉</div><div class="value">${stats.losses}</div><div class="label">${txt('패배', 'Losses')}</div></div>
+      <div class="stat-card blue"><div class="icon">🎯</div><div class="value">${stats.winRate}%</div><div class="label">${txt('승률', 'Win Rate')}</div></div>
+      <div class="stat-card ${parseFloat(stats.totalPnL) >= 0 ? 'green' : 'red'}"><div class="icon">💰</div><div class="value">${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%</div><div class="label">${txt('총 수익률', 'Total PnL')}</div></div>
+    </div>
+  </div>
+
+  <div class="position-stats">
+    <div class="position-stat-box">
+      <h4>📊 ${txt('포지션 유형', 'Position Types')}</h4>
+      <div class="bar-container"><div class="bar-label"><span>${txt('롱', 'Long')}</span><span>${longCount}</span></div><div class="bar-bg"><div class="bar-fill green" style="width: ${stats.total > 0 ? (longCount / stats.total) * 100 : 0}%"></div></div></div>
+      <div class="bar-container"><div class="bar-label"><span>${txt('숏', 'Short')}</span><span>${shortCount}</span></div><div class="bar-bg"><div class="bar-fill red" style="width: ${stats.total > 0 ? (shortCount / stats.total) * 100 : 0}%"></div></div></div>
+    </div>
+    <div class="position-stat-box">
+      <h4>📋 ${txt('포지션 상태', 'Position Status')}</h4>
+      <div class="bar-container"><div class="bar-label"><span>${txt('활성', 'Active')}</span><span>${activeCount}</span></div><div class="bar-bg"><div class="bar-fill yellow" style="width: ${stats.total > 0 ? (activeCount / stats.total) * 100 : 0}%"></div></div></div>
+      <div class="bar-container"><div class="bar-label"><span>${txt('종료', 'Closed')}</span><span>${closedCount}</span></div><div class="bar-bg"><div class="bar-fill gray" style="width: ${stats.total > 0 ? (closedCount / stats.total) * 100 : 0}%"></div></div></div>
+    </div>
+  </div>
+
+  ${insights.length > 0 ? `<div class="insights-box"><div class="section-title" style="border-bottom: none; margin-bottom: 10px;">💡 ${txt('트레이딩 인사이트', 'Trading Insights')}</div>${insights.map(i => `<div class="insight-item">${i}</div>`).join('')}</div>` : ''}
+
+  <div class="section">
+    <div class="section-title">📋 ${txt('포지션 상세 목록', 'Position Details')}</div>
+    <table>
+      <thead><tr><th>${txt('코인', 'Coin')}</th><th>${txt('방향', 'Direction')}</th><th>${txt('진입가', 'Entry')}</th><th>${txt('목표가', 'Target')}</th><th>${txt('손절가', 'Stop')}</th><th>${txt('손익비', 'R:R')}</th><th>${txt('상태', 'Status')}</th></tr></thead>
+      <tbody>${portfolioPositions.length === 0 ? `<tr><td colspan="7" style="text-align: center; padding: 40px; color: #999;">${txt('등록된 포지션이 없습니다', 'No positions')}</td></tr>` : portfolioPositions.map(p => {
+        const rr = p.position_type === 'LONG' ? ((p.target_price - p.entry_price) / (p.entry_price - p.stop_loss)).toFixed(2) : ((p.entry_price - p.target_price) / (p.stop_loss - p.entry_price)).toFixed(2)
+        return `<tr><td><strong>${p.coin_symbol}</strong></td><td><span class="${p.position_type.toLowerCase()}">${p.position_type}</span></td><td>$${p.entry_price.toLocaleString()}</td><td style="color: #3b82f6;">$${p.target_price.toLocaleString()}</td><td style="color: #ff6b6b;">$${p.stop_loss.toLocaleString()}</td><td style="color: #f59e0b;">1:${isFinite(parseFloat(rr)) && parseFloat(rr) > 0 ? rr : '1.00'}</td><td><span class="${p.status === 'active' ? 'active-badge' : 'closed-badge'}">${p.status === 'active' ? txt('활성', 'Active') : txt('종료', 'Closed')}</span></td></tr>`
+      }).join('')}</tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <p>${txt('크립토 대시보드 PRO에서 생성됨', 'Generated by Crypto Dashboard PRO')} | ${dateStr}</p>
+    <p style="margin-top: 5px;">${txt('※ 본 리포트는 참고용이며 투자 조언이 아닙니다.', '※ For reference only, not investment advice.')}</p>
+  </div>
+</body>
+</html>`
+    const win = window.open('', '_blank')
+    if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 500) }
   }
 
   const toggleFavorite = async (coin: AnalyzedCoin) => { if (!user) return; const existing = favorites.find(f => f.coin_id === coin.id); if (existing) { await supabase.from('favorites').delete().eq('id', existing.id); setFavorites(favorites.filter(f => f.id !== existing.id)); setFavoriteCoins(favoriteCoins.filter(fc => fc.id !== coin.id)) } else { if (profile?.plan === 'free' && favorites.length >= 3) { alert(txt('무료는 3개까지', 'Free: max 3')); return }; const { data } = await supabase.from('favorites').insert({ user_id: user.id, coin_id: coin.id, coin_symbol: coin.symbol, coin_name: coin.name }).select().single(); if (data) { setFavorites([data, ...favorites]); setFavoriteCoins([coin, ...favoriteCoins]) } } }
