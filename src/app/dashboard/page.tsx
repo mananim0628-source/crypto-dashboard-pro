@@ -314,7 +314,17 @@ export default function Dashboard() {
       const tr: Record<string, string> = { '입장하기': 'Enter', '참여하기': 'Join', '구독하기': 'Subscribe', '방문하기': 'Visit', '바로가기': 'Go', '확인하기': 'Check' }
       return tr[text] || text
     }
-    return (<div className={`bg-gradient-to-r ${ad.bg_color || 'from-purple-500/20 to-blue-500/20'} border ${ad.border_color || 'border-purple-500/30'} rounded-xl cursor-pointer hover:scale-[1.02] transition-all p-3`} onClick={() => handleAdClick(ad)}><div className="flex items-center gap-3"><span className="text-2xl">{ad.icon || '📢'}</span><div className="flex-1 min-w-0"><p className="font-semibold text-white text-sm">{ad.title}</p><p className="text-white/70 truncate text-xs">{ad.description}</p></div><span className="text-[#00d395] text-xs font-semibold">{getLinkText(ad.link_text)}</span></div></div>)
+    const getTitle = (title: string) => {
+      if (lang === 'ko') return title
+      const tr: Record<string, string> = { '텔레그램 시그널': 'Telegram Signal', '카카오 오픈채팅': 'KakaoTalk Chat', '유튜브 채널': 'YouTube Channel', '블로그': 'Blog', '텔레그램 채널': 'Telegram Channel', '디스코드': 'Discord' }
+      return tr[title] || title
+    }
+    const getDesc = (desc: string) => {
+      if (lang === 'ko') return desc
+      const tr: Record<string, string> = { '실시간 매매 시그널': 'Real-time signals', '트레이더들과 소통': 'Chat with traders', '차트 분석 영상': 'Chart analysis videos', '심층 분석 글': 'In-depth analysis' }
+      return tr[desc] || desc
+    }
+    return (<div className={`bg-gradient-to-r ${ad.bg_color || 'from-purple-500/20 to-blue-500/20'} border ${ad.border_color || 'border-purple-500/30'} rounded-xl cursor-pointer hover:scale-[1.02] transition-all p-3`} onClick={() => handleAdClick(ad)}><div className="flex items-center gap-3"><span className="text-2xl">{ad.icon || '📢'}</span><div className="flex-1 min-w-0"><p className="font-semibold text-white text-sm">{getTitle(ad.title)}</p><p className="text-white/70 truncate text-xs">{getDesc(ad.description)}</p></div><span className="text-[#00d395] text-xs font-semibold">{getLinkText(ad.link_text)}</span></div></div>)
   }
 
   const CoinCard = ({ coin, showFavButton = true }: { coin: AnalyzedCoin, showFavButton?: boolean }) => {
