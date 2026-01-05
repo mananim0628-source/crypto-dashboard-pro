@@ -170,6 +170,54 @@ export default function Dashboard() {
 
   const calculatePortfolioStats = () => { const active = portfolioPositions.filter(p => p.status === 'active'); const closed = portfolioPositions.filter(p => p.status === 'closed'); let totalPnL = 0, wins = 0, losses = 0; closed.forEach(p => { if (p.exit_price) { const pnl = p.position_type === 'LONG' ? ((p.exit_price - p.entry_price) / p.entry_price) * 100 : ((p.entry_price - p.exit_price) / p.entry_price) * 100; totalPnL += pnl; if (pnl > 0) wins++; else losses++ } }); return { total: portfolioPositions.length, active: active.length, closed: closed.length, winRate: (closed.length > 0 ? (wins / closed.length) * 100 : 0).toFixed(1), totalPnL: totalPnL.toFixed(2), wins, losses } }
 
+  // 시그널 자동 저장 (90점 이상 시그널만)
+  const savedSignalsRef = useRef<Set<string>>(new Set())
+  
+  useEffect(() => {
+    const saveHighScoreSignals = async () => {
+      if (!user) return
+      const allCoins = [...coreCoins, ...topGainers]
+      
+      for (const coin of allCoins) {
+        // 90점 이상이고 buy 또는 strong_buy 시그널만
+        if (coin.scores.total >= 90 && (coin.signal === 'buy' || coin.signal === 'strong_buy')) {
+          const signalKey = `${coin.symbol}-${new Date().toDateString()}`
+          
+          // 오늘 이미 저장한 시그널인지 확인
+          if (savedSignalsRef.current.has(signalKey)) continue
+          
+          try {
+            // 중복 체크 (같은 코인, 같은 날, pending 상태)
+            const { data: existing } = await supabase
+              .from('signal_history')
+              .select('id')
+              .eq('coin_symbol', coin.symbol)
+              .eq('result', 'pending')
+              .gte('signal_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
+              .single()
+            
+            if (!existing) {
+              await supabase.from('signal_history').insert({
+                coin_symbol: coin.symbol,
+                coin_name: coin.name,
+                signal_type: coin.signal,
+                entry_price: coin.entry_price,
+                target_price: coin.target_price,
+                stop_loss: coin.stop_loss,
+                score_total: coin.scores.total,
+                score_details: coin.scores,
+                result: 'pending'
+              })
+              savedSignalsRef.current.add(signalKey)
+            }
+          } catch (e) { /* 중복 저장 방지 */ }
+        }
+      }
+    }
+    
+    if (coreCoins.length > 0) saveHighScoreSignals()
+  }, [coreCoins, topGainers, user])
+
   const downloadPDF = () => {
     const stats = calculatePortfolioStats()
     const now = new Date()
