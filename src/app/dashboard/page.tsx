@@ -13,7 +13,7 @@ type AnalyzedCoin = CoinData & { scores: ChecklistScores; signal: 'strong_buy' |
 type Favorite = { id: string; coin_id: string; coin_symbol: string; coin_name: string }
 type AdSlot = { id: string; title: string; description: string; link_url: string; link_text: string; image_url: string | null; ad_type: 'own' | 'sponsored'; position: string; icon: string; bg_color: string; border_color: string; display_order: number }
 type AlertSettings = { id?: string; user_id: string; selected_coins: string[]; score_threshold: number; time_morning: boolean; time_afternoon: boolean; time_evening: boolean; time_night: boolean; alert_signal: boolean; alert_score_change: boolean; alert_price: boolean; telegram_id?: string | null }
-type PortfolioPosition = { id: string; user_id: string; coin_symbol: string; coin_name: string; position_type: 'LONG' | 'SHORT'; entry_price: number; target_price: number; stop_loss: number; amount?: number; entry_date: string; exit_price?: number; exit_date?: string; status: 'active' | 'closed' | 'cancelled'; notes?: string }
+type PortfolioPosition = { id: string; user_id: string; coin_symbol: string; coin_name: string; position_type: 'LONG' | 'SHORT'; entry_price: number; target_price: number; stop_loss: number; amount?: number; entry_date: string; exit_price?: number; exit_date?: string; closed_at?: string; status: 'active' | 'closed' | 'cancelled'; notes?: string }
 type AlertNotification = { id: string; coin: string; type: 'signal' | 'score' | 'price'; message: string; time: Date; read: boolean }
 type SignalStats = { total_signals: number; wins: number; losses: number; pending: number; win_rate: number; avg_profit: number; max_profit: number; max_loss: number; signals_30d: number; wins_30d: number; win_rate_30d: number }
 type SignalHistory = { id: string; coin_symbol: string; signal_type: string; entry_price: number; target_price: number; stop_loss: number; score_total: number; result: 'win' | 'loss' | 'pending' | null; exit_price: number | null; profit_percent: number | null; signal_at: string; closed_at: string | null }
@@ -170,6 +170,35 @@ export default function Dashboard() {
 
   const calculatePortfolioStats = () => { const active = portfolioPositions.filter(p => p.status === 'active'); const closed = portfolioPositions.filter(p => p.status === 'closed'); let totalPnL = 0, wins = 0, losses = 0, unrealizedPnL = 0; closed.forEach(p => { if (p.exit_price) { const pnl = p.position_type === 'LONG' ? ((p.exit_price - p.entry_price) / p.entry_price) * 100 : ((p.entry_price - p.exit_price) / p.entry_price) * 100; totalPnL += pnl; if (pnl > 0) wins++; else losses++ } }); active.forEach(p => { const coin = [...coreCoins, ...topGainers].find(c => c.symbol.toUpperCase() === p.coin_symbol.toUpperCase()); if (coin) { const pnl = p.position_type === 'LONG' ? ((coin.current_price - p.entry_price) / p.entry_price) * 100 : ((p.entry_price - coin.current_price) / p.entry_price) * 100; unrealizedPnL += pnl } }); return { total: portfolioPositions.length, active: active.length, closed: closed.length, winRate: (closed.length > 0 ? (wins / closed.length) * 100 : 0).toFixed(1), totalPnL: totalPnL.toFixed(2), unrealizedPnL: unrealizedPnL.toFixed(2), wins, losses } }
   
+  const getMonthlyPnL = () => {
+    const closed = portfolioPositions.filter(p => p.status === 'closed' && p.exit_price && p.closed_at)
+    const monthlyData: { [key: string]: { pnl: number; count: number; wins: number } } = {}
+    
+    closed.forEach(p => {
+      const date = new Date(p.closed_at!)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const pnl = p.position_type === 'LONG' 
+        ? ((p.exit_price! - p.entry_price) / p.entry_price) * 100
+        : ((p.entry_price - p.exit_price!) / p.entry_price) * 100
+      
+      if (!monthlyData[monthKey]) monthlyData[monthKey] = { pnl: 0, count: 0, wins: 0 }
+      monthlyData[monthKey].pnl += pnl
+      monthlyData[monthKey].count++
+      if (pnl > 0) monthlyData[monthKey].wins++
+    })
+    
+    return Object.entries(monthlyData)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 6)
+      .map(([month, data]) => ({
+        month,
+        monthLabel: new Date(month + '-01').toLocaleDateString(lang === 'ko' ? 'ko-KR' : 'en-US', { year: 'numeric', month: 'short' }),
+        pnl: data.pnl.toFixed(2),
+        count: data.count,
+        winRate: ((data.wins / data.count) * 100).toFixed(0)
+      }))
+  }
+  
   const getCurrentPrice = (symbol: string) => { const coin = [...coreCoins, ...topGainers].find(c => c.symbol.toUpperCase() === symbol.toUpperCase()); return coin?.current_price || 0 }
   
   const getUnrealizedPnL = (p: any) => { const currentPrice = getCurrentPrice(p.coin_symbol); if (!currentPrice) return null; return p.position_type === 'LONG' ? ((currentPrice - p.entry_price) / p.entry_price) * 100 : ((p.entry_price - currentPrice) / p.entry_price) * 100 }
@@ -214,7 +243,7 @@ export default function Dashboard() {
           // 알림 추가
           const msg = result === 'win' 
             ? `🎉 ${position.coin_symbol} ${position.position_type} 목표가 도달! +${pnl.toFixed(2)}%`
-            : `⚠️ ${position.coin_symbol} ${position.position_type} 손절가 도달! ${pnl.toFixed(2)}%`
+            : ⚠️ ${position.coin_symbol} ${position.position_type} 손절가 도달! ${pnl.toFixed(2)}%`
           setNotifications(prev => [{ id: `${position.coin_symbol}-close-${Date.now()}`, coin: position.coin_symbol, type: 'price' as const, message: msg, time: new Date(), read: false }, ...prev])
         }
       }
@@ -827,6 +856,36 @@ export default function Dashboard() {
             </div>
 
             {/* PDF 다운로드 - 맨 아래 작게 */}
+            {/* 월별 실현 수익 */}
+            <div className={`${currentColors.cardBg} rounded-xl p-4 border ${currentColors.cardBorder} mb-4`}>
+              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>📅 {txt('월별 실현 수익', 'Monthly Realized P&L')}</h3>
+              {getMonthlyPnL().length === 0 ? (
+                <p className={`text-center py-4 ${currentColors.textSecondary}`}>{txt('종료된 포지션이 없습니다', 'No closed positions yet')}</p>
+              ) : (
+                <div className="space-y-2">
+                  {getMonthlyPnL().map(m => (
+                    <div key={m.month} className={`flex items-center justify-between p-3 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`font-semibold ${currentColors.text}`}>{m.monthLabel}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} ${currentColors.textSecondary}`}>{m.count}{txt('건', ' trades')}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className={`text-xs ${currentColors.textSecondary}`}>{txt('승률', 'Win')} {m.winRate}%</span>
+                        <span className={`font-bold ${parseFloat(m.pnl) >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>
+                          {parseFloat(m.pnl) >= 0 ? '+' : ''}{m.pnl}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                  <div className={`flex items-center justify-between p-3 rounded-lg border-t-2 ${theme === 'dark' ? 'border-white/20' : 'border-gray-300'} mt-2 pt-4`}>
+                    <span className={`font-bold ${currentColors.text}`}>📊 {txt('누적 총계', 'Total')}</span>
+                    <span className={`text-xl font-bold ${parseFloat(calculatePortfolioStats().totalPnL) >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]'}`}>
+                      {parseFloat(calculatePortfolioStats().totalPnL) >= 0 ? '+' : ''}{calculatePortfolioStats().totalPnL}%
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className={`${currentColors.cardBg} rounded-xl p-4 border ${currentColors.cardBorder}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
