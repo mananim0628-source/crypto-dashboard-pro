@@ -183,7 +183,16 @@ export default function Dashboard() {
 
   const SignalBadge = ({ signal }: { signal: string }) => { const config: Record<string, { text: string; bg: string; icon: string }> = { strong_buy: { text: txt('강력 매수', 'Strong Buy'), bg: 'bg-green-500', icon: '🚀' }, buy: { text: txt('매수', 'Buy'), bg: 'bg-green-400', icon: '📈' }, hold: { text: txt('관망', 'Hold'), bg: 'bg-yellow-500', icon: '⏸️' }, sell: { text: txt('매도', 'Sell'), bg: 'bg-red-400', icon: '📉' }, strong_sell: { text: txt('강력 매도', 'Strong Sell'), bg: 'bg-red-500', icon: '🔻' } }; const { text, bg, icon } = config[signal] || config.hold; return <span className={`${bg} text-white px-3 py-1 rounded-full text-sm font-bold`}>{icon} {text}</span> }
   const ScoreBar = ({ label, score, max, color }: { label: string; score: number; max: number; color: string }) => (<div className="mb-2"><div className="flex justify-between text-sm mb-1"><span className={currentColors.textSecondary}>{label}</span><span className={`${currentColors.text} font-semibold`}>{score}/{max}</span></div><div className={`h-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} rounded-full overflow-hidden`}><div className={`h-full ${color} rounded-full`} style={{ width: `${(score / max) * 100}%` }} /></div></div>)
-  const AdCard = ({ ad }: { ad: AdSlot }) => (<div className={`bg-gradient-to-r ${ad.bg_color || 'from-purple-500/20 to-blue-500/20'} border ${ad.border_color || 'border-purple-500/30'} rounded-xl cursor-pointer hover:scale-[1.02] transition-all p-3`} onClick={() => handleAdClick(ad)}><div className="flex items-center gap-3"><span className="text-2xl">{ad.icon || '📢'}</span><div className="flex-1 min-w-0"><p className="font-semibold text-white text-sm">{ad.title}</p><p className="text-white/70 truncate text-xs">{ad.description}</p></div><span className="text-[#00d395] text-xs font-semibold">{ad.link_text || '→'}</span></div></div>)
+  
+  const AdCard = ({ ad }: { ad: AdSlot }) => {
+    const getLinkText = (text: string | null | undefined) => {
+      if (!text) return '→'
+      if (lang === 'ko') return text
+      const tr: Record<string, string> = { '입장하기': 'Enter', '참여하기': 'Join', '구독하기': 'Subscribe', '방문하기': 'Visit', '바로가기': 'Go', '확인하기': 'Check' }
+      return tr[text] || text
+    }
+    return (<div className={`bg-gradient-to-r ${ad.bg_color || 'from-purple-500/20 to-blue-500/20'} border ${ad.border_color || 'border-purple-500/30'} rounded-xl cursor-pointer hover:scale-[1.02] transition-all p-3`} onClick={() => handleAdClick(ad)}><div className="flex items-center gap-3"><span className="text-2xl">{ad.icon || '📢'}</span><div className="flex-1 min-w-0"><p className="font-semibold text-white text-sm">{ad.title}</p><p className="text-white/70 truncate text-xs">{ad.description}</p></div><span className="text-[#00d395] text-xs font-semibold">{getLinkText(ad.link_text)}</span></div></div>)
+  }
 
   const CoinCard = ({ coin, showFavButton = true }: { coin: AnalyzedCoin, showFavButton?: boolean }) => {
     const isPro = profile?.plan !== 'free'; const isFavorited = favorites.some(f => f.coin_id === coin.id)
@@ -341,38 +350,199 @@ export default function Dashboard() {
         {activeTab === 'indicator' && (
           <div className="space-y-6">
             <div className="flex gap-2 flex-wrap">{[{ id: 'intro', label: txt('📊 지표 소개', '📊 Introduction') }, { id: 'backtest', label: txt('📈 백테스팅', '📈 Backtesting') }, { id: 'deepbacktest', label: txt('🔬 딥백테스팅', '🔬 Deep Backtest') }, { id: 'automate', label: txt('🤖 자동매매', '🤖 Auto Trading') }].map(section => (<button key={section.id} onClick={() => setIndicatorSection(section.id as any)} className={`px-4 py-2 rounded-xl font-semibold transition ${indicatorSection === section.id ? 'bg-[#00d395] text-black' : theme === 'dark' ? 'bg-white/10 text-white/70 hover:bg-white/20' : 'bg-gray-200 text-gray-600 hover:bg-gray-300'}`}>{section.label}</button>))}</div>
+            
             {indicatorSection === 'intro' && (<>
-              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🎯 왜 트레이딩뷰인가?', '🎯 Why TradingView?')}</h3><div className="grid grid-cols-1 md:grid-cols-3 gap-4"><div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><div className="text-3xl mb-2">🌍</div><h4 className={`font-bold mb-1 ${currentColors.text}`}>{txt('글로벌 표준', 'Global Standard')}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{txt('5천만+ 트레이더 사용', '50M+ traders')}</p></div><div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><div className="text-3xl mb-2">📊</div><h4 className={`font-bold mb-1 ${currentColors.text}`}>{txt('정확한 백테스트', 'Accurate Backtest')}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{txt('내장 백테스트 기능', 'Built-in testing')}</p></div><div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><div className="text-3xl mb-2">⚡</div><h4 className={`font-bold mb-1 ${currentColors.text}`}>{txt('실시간 시그널', 'Real-time Signals')}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{txt('차트에서 바로 확인', 'On-chart alerts')}</p></div></div></div>
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/30 rounded-2xl p-6">
+                <h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🎯 왜 트레이딩뷰인가?', '🎯 Why TradingView?')}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><div className="text-3xl mb-2">🌍</div><h4 className={`font-bold mb-1 ${currentColors.text}`}>{txt('글로벌 표준', 'Global Standard')}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{txt('5천만+ 트레이더 사용', '50M+ traders')}</p></div>
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><div className="text-3xl mb-2">📊</div><h4 className={`font-bold mb-1 ${currentColors.text}`}>{txt('정확한 백테스트', 'Accurate Backtest')}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{txt('내장 백테스트 기능', 'Built-in testing')}</p></div>
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><div className="text-3xl mb-2">⚡</div><h4 className={`font-bold mb-1 ${currentColors.text}`}>{txt('실시간 시그널', 'Real-time Signals')}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{txt('차트에서 바로 확인', 'On-chart alerts')}</p></div>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><div className="flex items-center gap-2 mb-4"><span className="text-2xl">🆓</span><h3 className={`text-xl font-bold ${currentColors.text}`}>{txt('무료 버전', 'Free Version')}</h3></div><p className={`${currentColors.textSecondary} text-sm mb-4`}>{txt('기본 지표 3개까지 사용 가능', 'Up to 3 basic indicators')}</p><div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}><h4 className={`font-bold mb-3 ${currentColors.text}`}>{txt('📌 추천 기본 지표', '📌 Recommended')}</h4><div className="space-y-2"><div className={`flex justify-between items-center pb-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><span className={currentColors.text}>RSI</span><span className="text-[#00d395] text-sm">{txt('과매수/과매도', 'Overbought/sold')}</span></div><div className={`flex justify-between items-center pb-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><span className={currentColors.text}>MACD</span><span className="text-[#00d395] text-sm">{txt('추세 전환', 'Trend')}</span></div><div className="flex justify-between items-center"><span className={currentColors.text}>{txt('볼린저 밴드', 'Bollinger')}</span><span className="text-[#00d395] text-sm">{txt('변동성', 'Volatility')}</span></div></div></div></div>
-                <div className={`${currentColors.cardBg} rounded-2xl p-6 border-2 border-[#00d395]`}><div className="flex items-center gap-2 mb-4"><span className="text-2xl">💎</span><h3 className={`text-xl font-bold ${currentColors.text}`}>{txt('체크리스트 지표', 'Checklist Indicator')}</h3><span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs font-bold">PRO</span></div><p className={`${currentColors.textSecondary} text-sm mb-4`}>{txt('트레이딩뷰 유료 구독자 전용', 'For TradingView paid users')}</p><div className={`${theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} rounded-xl p-4 mb-4`}><h4 className="font-bold mb-3 text-[#00d395]">{txt('✅ 포함 기능', '✅ Features')}</h4><div className="space-y-2 text-sm">{[txt('7단계 체크리스트 자동 점수화', '7-step auto-scoring'), txt('진입가/목표가/손절가 자동 계산', 'Auto entry/target/stop'), txt('롱/숏/관망 시그널', 'Long/Short/Hold signals'), txt('알림 기능 (텔레그램 연동)', 'Alerts (Telegram)')].map((f, i) => (<div key={i} className="flex items-center gap-2"><span>✓</span><span className={currentColors.text}>{f}</span></div>))}</div></div><div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'} rounded-xl p-4 mb-4`}><div className="flex items-center justify-between mb-2"><span className={`line-through ${currentColors.textSecondary}`}>{txt('정가', 'Regular')} $199/{txt('월', 'mo')}</span><span className="bg-[#ff6b6b] text-white px-2 py-0.5 rounded text-xs font-bold">50% OFF</span></div><div className="flex items-baseline gap-2"><span className="text-3xl font-bold text-[#00d395]">$99</span><span className={currentColors.textSecondary + ' text-sm'}>/{txt('월', 'month')}</span></div><p className="text-yellow-400 text-xs mt-2">{txt('* 선착순 50명 한정', '* First 50 only')}</p></div><a href="https://t.me/xrp5555555" target="_blank" rel="noopener noreferrer" className="block w-full bg-[#00d395] text-black py-3 rounded-xl font-bold text-center hover:bg-[#00d395]/90 transition">{txt('💬 구매 문의 (텔레그램)', '💬 Purchase (Telegram)')}</a></div>
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                  <div className="flex items-center gap-2 mb-4"><span className="text-2xl">🆓</span><h3 className={`text-xl font-bold ${currentColors.text}`}>{txt('무료 버전', 'Free Version')}</h3></div>
+                  <p className={`${currentColors.textSecondary} text-sm mb-4`}>{txt('기본 지표 3개까지 사용 가능', 'Up to 3 basic indicators')}</p>
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4`}>
+                    <h4 className={`font-bold mb-3 ${currentColors.text}`}>{txt('📌 추천 기본 지표', '📌 Recommended')}</h4>
+                    <div className="space-y-2">
+                      <div className={`flex justify-between items-center pb-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><span className={currentColors.text}>RSI</span><span className="text-[#00d395] text-sm">{txt('과매수/과매도', 'Overbought/sold')}</span></div>
+                      <div className={`flex justify-between items-center pb-2 border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}><span className={currentColors.text}>MACD</span><span className="text-[#00d395] text-sm">{txt('추세 전환', 'Trend')}</span></div>
+                      <div className="flex justify-between items-center"><span className={currentColors.text}>{txt('볼린저 밴드', 'Bollinger')}</span><span className="text-[#00d395] text-sm">{txt('변동성', 'Volatility')}</span></div>
+                    </div>
+                  </div>
+                </div>
+                <div className={`${currentColors.cardBg} rounded-2xl p-6 border-2 border-[#00d395]`}>
+                  <div className="flex items-center gap-2 mb-4"><span className="text-2xl">💎</span><h3 className={`text-xl font-bold ${currentColors.text}`}>{txt('체크리스트 지표', 'Checklist Indicator')}</h3><span className="bg-[#00d395] text-black px-2 py-0.5 rounded text-xs font-bold">PRO</span></div>
+                  <p className={`${currentColors.textSecondary} text-sm mb-4`}>{txt('트레이딩뷰 유료 구독자 전용', 'For TradingView paid users')}</p>
+                  <div className={`${theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50'} rounded-xl p-4 mb-4`}>
+                    <h4 className="font-bold mb-3 text-[#00d395]">{txt('✅ 포함 기능', '✅ Features')}</h4>
+                    <div className="space-y-2 text-sm">
+                      {[
+                        txt('7단계 체크리스트 자동 점수화', '7-step auto-scoring'),
+                        txt('진입가 / 목표가 / 손절가 자동 계산', 'Auto entry/target/stop'),
+                        txt('롱/숏/관망 시그널 표시', 'Long/Short/Hold signals'),
+                        txt('모든 타임프레임 지원', 'All timeframes supported'),
+                        txt('모든 자산 적용 (크립토/주식/선물)', 'All assets (crypto/stocks/futures)'),
+                        txt('알림 기능 (텔레그램 연동 가능)', 'Alerts (Telegram integration)'),
+                        txt('월 구독 방식', 'Monthly subscription')
+                      ].map((f, i) => (<div key={i} className="flex items-center gap-2"><span className="text-[#00d395]">✓</span><span className={currentColors.text}>{f}</span></div>))}
+                    </div>
+                  </div>
+                  <div className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-100'} rounded-xl p-4 mb-4`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`line-through ${currentColors.textSecondary}`}>{txt('정가', 'Regular')} $199/{txt('월', 'mo')}</span>
+                      <span className="bg-[#ff6b6b] text-white px-2 py-0.5 rounded text-xs font-bold">50% OFF</span>
+                    </div>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-3xl font-bold text-[#00d395]">$99</span>
+                      <span className={currentColors.textSecondary + ' text-sm'}>/{txt('월', 'month')}</span>
+                    </div>
+                    <p className="text-yellow-400 text-xs mt-2">{txt('* 선착순 50명 한정', '* First 50 only')}</p>
+                  </div>
+                  <a href="https://t.me/xrp5555555" target="_blank" rel="noopener noreferrer" className="block w-full bg-[#00d395] text-black py-3 rounded-xl font-bold text-center hover:bg-[#00d395]/90 transition">{txt('💬 구매 문의 (텔레그램)', '💬 Purchase (Telegram)')}</a>
+                </div>
               </div>
             </>)}
-            {indicatorSection === 'backtest' && (<div className="space-y-6"><div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('📈 백테스팅이란?', '📈 What is Backtesting?')}</h3><p className={currentColors.textSecondary}>{txt('과거 데이터로 전략 성능을 테스트합니다.', 'Test strategy with historical data.')}</p></div><div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔧 백테스트 방법', '🔧 How to Backtest')}</h3><div className="space-y-4">{[{ step: 1, title: txt('전략 테스터 열기', 'Open Strategy Tester'), desc: txt('차트 하단 "전략 테스터" 탭 클릭', 'Click tab at bottom') }, { step: 2, title: txt('기간 설정', 'Set Period'), desc: txt('1개월 ~ 수년', '1 month to years') }, { step: 3, title: txt('결과 분석', 'Analyze Results'), desc: txt('순이익, 승률, 최대 낙폭 확인', 'Net profit, win rate, drawdown') }].map(item => (<div key={item.step} className={`flex gap-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}><div className="w-8 h-8 bg-[#00d395] text-black rounded-full flex items-center justify-center font-bold flex-shrink-0">{item.step}</div><div><h4 className={`font-bold ${currentColors.text}`}>{item.title}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{item.desc}</p></div></div>))}</div></div></div>)}
-            {indicatorSection === 'deepbacktest' && (<div className="space-y-6"><div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔬 딥백테스팅이란?', '🔬 What is Deep Backtesting?')}</h3><p className={currentColors.textSecondary}>{txt('틱 단위, 슬리피지, 수수료를 반영한 정밀 테스트', 'Precise testing with tick data, slippage, fees')}</p></div><div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-3 ${currentColors.text}`}>{txt('⚠️ 주의사항', '⚠️ Cautions')}</h3><ul className={`space-y-2 text-sm ${currentColors.textSecondary}`}><li>• {txt('바 확대 기능은 Premium 이상 필요', 'Bar Magnifier requires Premium')}</li><li>• {txt('과거 성과 ≠ 미래 수익 보장', 'Past ≠ future results')}</li><li>• {txt('과최적화 주의', 'Beware of overfitting')}</li></ul></div></div>)}
-            {indicatorSection === 'automate' && (<div className="space-y-6"><div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🤖 자동매매 연동', '🤖 Auto Trading')}</h3><p className={currentColors.textSecondary}>{txt('트레이딩뷰 알림 → 거래소 API → 자동 주문', 'TradingView alert → Exchange API → Auto order')}</p></div><div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔗 지원 거래소', '🔗 Supported Exchanges')}</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-4">{['Binance', 'Bybit', 'OKX', 'Bitget'].map(ex => (<div key={ex} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}><span className={`font-bold ${currentColors.text}`}>{ex}</span></div>))}</div></div><div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-500/50 rounded-2xl p-6"><h3 className="text-xl font-bold mb-4 text-[#ff6b6b]">{txt('⚠️ 중요 면책조항', '⚠️ Important Disclaimer')}</h3><div className={`space-y-2 text-sm ${currentColors.textSecondary}`}><p>• {txt('자동매매는 전적으로 본인 책임', 'Auto trading is at your own risk')}</p><p>• {txt('API 키 관리, 자금 운용 책임 = 사용자', 'API key & fund management = your responsibility')}</p><p>• {txt('과거 백테스트 ≠ 미래 수익 보장', 'Past backtest ≠ future profit')}</p><p>• {txt('소액 테스트 후 운용 권장', 'Test with small amount first')}</p></div></div><div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder} text-center`}><p className={`mb-4 ${currentColors.textSecondary}`}>{txt('자동매매 연동 관련 문의', 'Auto trading setup inquiry')}</p><a href="https://t.me/xrp5555555" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#00d395] text-black px-8 py-3 rounded-xl font-bold">{txt('💬 텔레그램 문의', '💬 Telegram')}</a></div></div>)}
+            
+            {indicatorSection === 'backtest' && (<div className="space-y-6">
+              <div className="bg-gradient-to-r from-green-500/10 to-blue-500/10 border border-green-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('📈 백테스팅이란?', '📈 What is Backtesting?')}</h3><p className={currentColors.textSecondary}>{txt('과거 데이터로 전략 성능을 테스트합니다. 실제 투자 전 전략의 유효성을 검증할 수 있습니다.', 'Test strategy with historical data. Validate before real investment.')}</p></div>
+              <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔧 백테스트 방법', '🔧 How to Backtest')}</h3><div className="space-y-4">{[{ step: 1, title: txt('전략 테스터 열기', 'Open Strategy Tester'), desc: txt('차트 하단 "전략 테스터" 탭 클릭', 'Click tab at bottom') }, { step: 2, title: txt('기간 설정', 'Set Period'), desc: txt('원하는 기간 선택 (1개월 ~ 수년)', '1 month to years') }, { step: 3, title: txt('결과 분석', 'Analyze Results'), desc: txt('순이익, 승률, 최대 낙폭 확인', 'Net profit, win rate, drawdown') }].map(item => (<div key={item.step} className={`flex gap-4 p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}><div className="w-8 h-8 bg-[#00d395] text-black rounded-full flex items-center justify-center font-bold flex-shrink-0">{item.step}</div><div><h4 className={`font-bold ${currentColors.text}`}>{item.title}</h4><p className={`text-sm ${currentColors.textSecondary}`}>{item.desc}</p></div></div>))}</div></div>
+            </div>)}
+            
+            {indicatorSection === 'deepbacktest' && (<div className="space-y-6">
+              <div className="bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔬 딥백테스팅이란?', '🔬 What is Deep Backtesting?')}</h3><p className={currentColors.textSecondary}>{txt('틱 단위 데이터, 슬리피지, 수수료를 반영한 정밀 테스트입니다. 실제 트레이딩 환경과 유사한 결과를 얻을 수 있습니다.', 'Precise testing with tick data, slippage, fees. Results similar to real trading.')}</p></div>
+              <div className="bg-gradient-to-r from-yellow-500/10 to-orange-500/10 border border-yellow-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-3 ${currentColors.text}`}>{txt('⚠️ 주의사항', '⚠️ Cautions')}</h3><ul className={`space-y-2 text-sm ${currentColors.textSecondary}`}><li>• {txt('바 확대(Bar Magnifier) 기능은 Premium 이상 필요', 'Bar Magnifier requires Premium+')}</li><li>• {txt('과거 성과 ≠ 미래 수익 보장', 'Past ≠ future results')}</li><li>• {txt('과최적화(Overfitting) 주의', 'Beware of overfitting')}</li></ul></div>
+            </div>)}
+            
+            {indicatorSection === 'automate' && (<div className="space-y-6">
+              <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/30 rounded-2xl p-6"><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🤖 자동매매 연동', '🤖 Auto Trading')}</h3><p className={currentColors.textSecondary}>{txt('트레이딩뷰 알림 → 거래소 API → 자동 주문 실행', 'TradingView alert → Exchange API → Auto order')}</p></div>
+              <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}><h3 className={`text-xl font-bold mb-4 ${currentColors.text}`}>{txt('🔗 지원 거래소', '🔗 Supported Exchanges')}</h3><div className="grid grid-cols-2 md:grid-cols-4 gap-4">{['Binance', 'Bybit', 'OKX', 'Bitget'].map(ex => (<div key={ex} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}><span className={`font-bold ${currentColors.text}`}>{ex}</span></div>))}</div></div>
+              <div className="bg-gradient-to-r from-red-500/10 to-orange-500/10 border-2 border-red-500/50 rounded-2xl p-6"><h3 className="text-xl font-bold mb-4 text-[#ff6b6b]">{txt('⚠️ 중요 면책조항', '⚠️ Important Disclaimer')}</h3><div className={`space-y-2 text-sm ${currentColors.textSecondary}`}><p>• {txt('자동매매는 전적으로 본인 책임입니다', 'Auto trading is at your own risk')}</p><p>• {txt('API 키 관리, 자금 운용 책임 = 사용자', 'API key & fund management = your responsibility')}</p><p>• {txt('과거 백테스트 결과 ≠ 미래 수익 보장', 'Past backtest ≠ future profit')}</p><p>• {txt('소액 테스트 후 운용을 권장합니다', 'Test with small amount first')}</p></div></div>
+              <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder} text-center`}><p className={`mb-4 ${currentColors.textSecondary}`}>{txt('자동매매 연동 관련 문의', 'Auto trading setup inquiry')}</p><a href="https://t.me/xrp5555555" target="_blank" rel="noopener noreferrer" className="inline-block bg-[#00d395] text-black px-8 py-3 rounded-xl font-bold">{txt('💬 텔레그램 문의', '💬 Telegram')}</a></div>
+            </div>)}
           </div>
         )}
 
         {/* 리포트 탭 */}
         {activeTab === 'report' && (
           <div className="space-y-6">
+            {/* 트레이딩 성과 요약 */}
             <div className="bg-gradient-to-r from-[#00d395] to-[#00b383] rounded-2xl p-6 text-white">
               <h3 className="text-lg font-bold mb-4">{txt('📊 트레이딩 성과', '📊 Trading Performance')}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">{(() => { const stats = calculatePortfolioStats(); return [{ label: txt('총 포지션', 'Total'), value: stats.total }, { label: txt('활성', 'Active'), value: stats.active }, { label: txt('승률', 'Win Rate'), value: `${stats.winRate}%` }, { label: 'PnL', value: `${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%` }].map((i, idx) => (<div key={idx}><div className="text-3xl font-bold">{i.value}</div><div className="text-sm opacity-80">{i.label}</div></div>)) })()}</div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                {(() => { const stats = calculatePortfolioStats(); return [
+                  { label: txt('총 포지션', 'Total'), value: stats.total },
+                  { label: txt('활성', 'Active'), value: stats.active },
+                  { label: txt('승률', 'Win Rate'), value: `${stats.winRate}%` },
+                  { label: 'PnL', value: `${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%` }
+                ].map((i, idx) => (<div key={idx}><div className="text-3xl font-bold">{i.value}</div><div className="text-sm opacity-80">{i.label}</div></div>)) })()}
+              </div>
             </div>
+
+            {/* 포지션 목록 */}
             <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('📥 PDF 다운로드', '📥 PDF Download')}</h3>
-              <p className={`${currentColors.textSecondary} text-sm mb-4`}>{txt('전체 포지션 기록을 PDF로 다운로드', 'Download all positions as PDF')}</p>
-              <button type="button" onClick={downloadPDF} className="w-full bg-[#00d395] text-black py-4 rounded-xl font-bold text-lg">{txt('📄 PDF 생성', '📄 Generate PDF')}</button>
+              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('📋 포지션 목록', '📋 Position List')}</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead><tr className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{[txt('코인','Coin'), txt('방향','Dir'), txt('진입가','Entry'), txt('목표가','Target'), txt('손절가','Stop'), txt('상태','Status')].map(h => (<th key={h} className={`text-left p-3 text-sm ${currentColors.textSecondary}`}>{h}</th>))}</tr></thead>
+                  <tbody>
+                    {portfolioPositions.length === 0 ? (<tr><td colSpan={6} className={`text-center p-8 ${currentColors.textSecondary}`}>{txt('등록된 포지션이 없습니다', 'No positions registered')}</td></tr>) : portfolioPositions.map(p => (
+                      <tr key={p.id} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
+                        <td className={`p-3 font-bold ${currentColors.text}`}>{p.coin_symbol}</td>
+                        <td className="p-3"><span className={`px-3 py-1 rounded-full text-xs font-bold ${p.position_type === 'LONG' ? 'bg-[#00d395]/20 text-[#00d395]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{p.position_type}</span></td>
+                        <td className={`p-3 ${currentColors.text}`}>${p.entry_price.toLocaleString()}</td>
+                        <td className="p-3 text-blue-400">${p.target_price.toLocaleString()}</td>
+                        <td className="p-3 text-[#ff6b6b]">${p.stop_loss.toLocaleString()}</td>
+                        <td className="p-3"><span className={`px-3 py-1 rounded-full text-xs ${p.status === 'active' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-white/10 text-white/50'}`}>{p.status === 'active' ? txt('활성','Active') : txt('종료','Closed')}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
+
+            {/* 성과 분석 */}
             <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('📋 포지션 목록', '📋 Positions')}</h3>
-              <div className="overflow-x-auto"><table className="w-full"><thead><tr className={`border-b ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'}`}>{[txt('코인','Coin'), txt('방향','Dir'), txt('진입가','Entry'), txt('목표가','Target'), txt('손절가','Stop'), txt('상태','Status')].map(h => <th key={h} className={`text-left p-3 text-sm ${currentColors.textSecondary}`}>{h}</th>)}</tr></thead><tbody>{portfolioPositions.length === 0 ? (<tr><td colSpan={6} className={`text-center p-8 ${currentColors.textSecondary}`}>{txt('데이터 없음', 'No data')}</td></tr>) : portfolioPositions.slice(0, 10).map(p => (<tr key={p.id} className={`border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}><td className={`p-3 font-bold ${currentColors.text}`}>{p.coin_symbol}</td><td className="p-3"><span className={`px-3 py-1 rounded-full text-xs font-bold ${p.position_type === 'LONG' ? 'bg-[#00d395]/20 text-[#00d395]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>{p.position_type}</span></td><td className={`p-3 ${currentColors.text}`}>${p.entry_price.toLocaleString()}</td><td className="p-3 text-blue-400">${p.target_price.toLocaleString()}</td><td className="p-3 text-[#ff6b6b]">${p.stop_loss.toLocaleString()}</td><td className="p-3"><span className={`px-3 py-1 rounded-full text-xs ${p.status === 'active' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-white/10 text-white/50'}`}>{p.status === 'active' ? txt('활성','Active') : txt('종료','Closed')}</span></td></tr>))}</tbody></table></div>
+              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('📈 성과 분석', '📈 Performance Analysis')}</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {(() => { const stats = calculatePortfolioStats(); return [
+                  { label: txt('승리', 'Wins'), value: stats.wins, color: 'text-[#00d395]', icon: '🏆', bg: 'bg-[#00d395]/10' },
+                  { label: txt('패배', 'Losses'), value: stats.losses, color: 'text-[#ff6b6b]', icon: '📉', bg: 'bg-[#ff6b6b]/10' },
+                  { label: txt('승률', 'Win Rate'), value: `${stats.winRate}%`, color: 'text-blue-400', icon: '🎯', bg: 'bg-blue-500/10' },
+                  { label: txt('총 수익률', 'Total PnL'), value: `${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%`, color: parseFloat(stats.totalPnL) >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]', icon: '💰', bg: parseFloat(stats.totalPnL) >= 0 ? 'bg-[#00d395]/10' : 'bg-[#ff6b6b]/10' }
+                ].map((item, i) => (
+                  <div key={i} className={`${item.bg} rounded-xl p-4 text-center border ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'}`}>
+                    <div className="text-3xl mb-2">{item.icon}</div>
+                    <div className={`text-2xl font-bold ${item.color}`}>{item.value}</div>
+                    <div className={`text-sm ${currentColors.textSecondary}`}>{item.label}</div>
+                  </div>
+                )) })()}
+              </div>
             </div>
-            <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
-              <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('📈 성과 요약', '📈 Summary')}</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">{(() => { const stats = calculatePortfolioStats(); return [{ label: txt('승리', 'Wins'), value: stats.wins, color: 'text-[#00d395]', icon: '🏆' }, { label: txt('패배', 'Losses'), value: stats.losses, color: 'text-[#ff6b6b]', icon: '📉' }, { label: txt('승률', 'Win Rate'), value: `${stats.winRate}%`, color: 'text-blue-400', icon: '🎯' }, { label: txt('총 수익률', 'Total PnL'), value: `${parseFloat(stats.totalPnL) >= 0 ? '+' : ''}${stats.totalPnL}%`, color: parseFloat(stats.totalPnL) >= 0 ? 'text-[#00d395]' : 'text-[#ff6b6b]', icon: '💰' }].map((item, i) => (<div key={i} className={`${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'} rounded-xl p-4 text-center`}><div className="text-2xl mb-2">{item.icon}</div><div className={`text-2xl font-bold ${item.color}`}>{item.value}</div><div className={`text-sm ${currentColors.textSecondary}`}>{item.label}</div></div>)) })()}</div>
+
+            {/* 포지션 상세 통계 */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('📊 포지션 통계', '📊 Position Stats')}</h3>
+                <div className="space-y-4">
+                  {(() => { 
+                    const longCount = portfolioPositions.filter(p => p.position_type === 'LONG').length
+                    const shortCount = portfolioPositions.filter(p => p.position_type === 'SHORT').length
+                    const activeCount = portfolioPositions.filter(p => p.status === 'active').length
+                    const closedCount = portfolioPositions.filter(p => p.status === 'closed').length
+                    return [
+                      { label: txt('롱 포지션', 'Long'), value: longCount, color: 'bg-[#00d395]', total: portfolioPositions.length },
+                      { label: txt('숏 포지션', 'Short'), value: shortCount, color: 'bg-[#ff6b6b]', total: portfolioPositions.length },
+                      { label: txt('활성', 'Active'), value: activeCount, color: 'bg-yellow-500', total: portfolioPositions.length },
+                      { label: txt('종료', 'Closed'), value: closedCount, color: 'bg-gray-500', total: portfolioPositions.length }
+                    ].map((stat, i) => (
+                      <div key={i}>
+                        <div className="flex justify-between text-sm mb-1"><span className={currentColors.textSecondary}>{stat.label}</span><span className={currentColors.text}>{stat.value}</span></div>
+                        <div className={`h-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-gray-200'} rounded-full overflow-hidden`}><div className={`h-full ${stat.color} rounded-full`} style={{ width: `${stat.total > 0 ? (stat.value / stat.total) * 100 : 0}%` }} /></div>
+                      </div>
+                    ))
+                  })()}
+                </div>
+              </div>
+
+              <div className={`${currentColors.cardBg} rounded-2xl p-6 border ${currentColors.cardBorder}`}>
+                <h3 className={`text-lg font-bold mb-4 ${currentColors.text}`}>{txt('💡 트레이딩 인사이트', '💡 Trading Insights')}</h3>
+                <div className="space-y-3">
+                  {(() => {
+                    const stats = calculatePortfolioStats()
+                    const insights = []
+                    if (parseFloat(stats.winRate) >= 60) insights.push({ icon: '🌟', text: txt('승률이 60% 이상으로 우수합니다!', 'Win rate above 60% - Excellent!'), color: 'text-[#00d395]' })
+                    else if (parseFloat(stats.winRate) >= 40) insights.push({ icon: '📊', text: txt('승률이 평균 수준입니다.', 'Win rate is average.'), color: 'text-yellow-400' })
+                    else if (stats.total > 0) insights.push({ icon: '⚠️', text: txt('승률 개선이 필요합니다.', 'Win rate needs improvement.'), color: 'text-[#ff6b6b]' })
+                    if (parseFloat(stats.totalPnL) > 0) insights.push({ icon: '💰', text: txt('총 수익이 플러스입니다!', 'Total PnL is positive!'), color: 'text-[#00d395]' })
+                    else if (parseFloat(stats.totalPnL) < 0) insights.push({ icon: '📉', text: txt('손실을 줄이는 전략이 필요합니다.', 'Need loss reduction strategy.'), color: 'text-[#ff6b6b]' })
+                    if (stats.active > 0) insights.push({ icon: '🔥', text: txt(`현재 ${stats.active}개 포지션 활성 중`, `${stats.active} active positions`), color: 'text-blue-400' })
+                    if (insights.length === 0) insights.push({ icon: '📝', text: txt('포지션을 추가하면 인사이트가 표시됩니다.', 'Add positions for insights.'), color: currentColors.textSecondary })
+                    return insights.map((insight, i) => (
+                      <div key={i} className={`flex items-center gap-3 p-3 rounded-lg ${theme === 'dark' ? 'bg-white/5' : 'bg-gray-50'}`}>
+                        <span className="text-xl">{insight.icon}</span>
+                        <span className={`text-sm ${insight.color}`}>{insight.text}</span>
+                      </div>
+                    ))
+                  })()}
+                </div>
+              </div>
+            </div>
+
+            {/* PDF 다운로드 - 맨 아래 작게 */}
+            <div className={`${currentColors.cardBg} rounded-xl p-4 border ${currentColors.cardBorder}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">📄</span>
+                  <div>
+                    <p className={`font-semibold ${currentColors.text} text-sm`}>{txt('PDF 리포트', 'PDF Report')}</p>
+                    <p className={`text-xs ${currentColors.textSecondary}`}>{txt('전체 포지션 기록 다운로드', 'Download all position records')}</p>
+                  </div>
+                </div>
+                <button type="button" onClick={downloadPDF} className="bg-[#00d395] text-black px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#00d395]/90 transition">{txt('다운로드', 'Download')}</button>
+              </div>
             </div>
           </div>
         )}
