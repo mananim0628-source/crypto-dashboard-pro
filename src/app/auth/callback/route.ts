@@ -8,9 +8,15 @@ export async function GET(request: NextRequest) {
   const code = requestUrl.searchParams.get('code')
 
   if (code) {
-    const cookieStore = cookies()
+    const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    await supabase.auth.exchangeCodeForSession(code)
+    
+    try {
+      await supabase.auth.exchangeCodeForSession(code)
+    } catch (error) {
+      console.error('Auth error:', error)
+      return NextResponse.redirect(new URL('/login?error=auth_failed', request.url))
+    }
   }
 
   return NextResponse.redirect(new URL('/dashboard', request.url))
