@@ -58,7 +58,7 @@ const SYMBOL_TO_ID: Record<string, string> = {
   'BONK': 'bonk',
   'FLOKI': 'floki',
   'WIF': 'dogwifcoin',
-  'ENA': 'ethena',  // ← 이게 핵심! ENA = Ethena (USDe 아님)
+  'ENA': 'ethena',
   'PENDLE': 'pendle',
   'JUP': 'jupiter-exchange-solana',
   'WLD': 'worldcoin-wld',
@@ -89,7 +89,7 @@ const SYMBOL_TO_ID: Record<string, string> = {
   'ZEC': 'zcash',
   'IOTA': 'iota',
   'EOS': 'eos',
-  'USDE': 'ethena-usde',  // USDe는 별도
+  'USDE': 'ethena-usde',
   'USDT': 'tether',
   'USDC': 'usd-coin',
 }
@@ -111,17 +111,24 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'gainers') {
-      // 상승률 상위 코인
+      // 상승률 상위 코인 - 더 많이 가져와서 필터링
       const response = await fetch(
-        `${COINGECKO_API}/coins/markets?vs_currency=usd&order=price_change_percentage_24h_desc&per_page=50&page=1&sparkline=false`,
+        `${COINGECKO_API}/coins/markets?vs_currency=usd&order=percent_change_24h&per_page=250&page=1&sparkline=false&price_change_percentage=24h`,
         { next: { revalidate: 60 } }
       )
       const data = await response.json()
-      // 상위 6개 필터링
-      const filtered = data.filter((coin: any) => 
-        coin.market_cap > 10000000 && // 시총 1000만 달러 이상
-        coin.price_change_percentage_24h > 0
-      ).slice(0, 6)
+      
+      // 상승률로 정렬 후 필터링
+      const filtered = data
+        .filter((coin: any) => 
+          coin.market_cap > 1000000 && // 시총 100만 달러 이상 (기존 1000만 → 100만으로 낮춤)
+          coin.price_change_percentage_24h > 5 // 5% 이상 상승만
+        )
+        .sort((a: any, b: any) => 
+          (b.price_change_percentage_24h || 0) - (a.price_change_percentage_24h || 0)
+        )
+        .slice(0, 10) // 10개로 늘림 (기존 6개)
+        
       return NextResponse.json({ coins: filtered })
     }
 
