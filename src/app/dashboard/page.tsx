@@ -271,14 +271,13 @@ export default function Dashboard() {
           try {
             // 중복 체크 (같은 코인, 같은 날, pending 상태)
             const { data: existing } = await supabase
-              .from('signal_history')
-              .select('id')
-              .eq('coin_symbol', coin.symbol)
-              .eq('result', 'pending')
-              .gte('signal_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
-              .single()
-            
-            if (!existing) {
+  .from('signal_history')
+  .select('id')
+  .eq('coin_symbol', coin.symbol)
+  .gte('signal_at', new Date(new Date().setHours(0,0,0,0)).toISOString())
+  .limit(1)
+
+if (!existing || existing.length === 0) {
               await supabase.from('signal_history').insert({
                 coin_symbol: coin.symbol,
                 coin_name: coin.name,
