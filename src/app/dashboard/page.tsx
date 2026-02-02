@@ -651,7 +651,7 @@ const generateDetailedAIComment = (coin: AnalyzedCoin): string => {
             <aside className="hidden xl:block w-72 flex-shrink-0">
               <div className="sticky top-24 space-y-6">
                 <div><h3 className={`text-lg font-bold mb-3 ${currentColors.text}`}>{txt('📢 소통 채널', '📢 Channels')}</h3><div className="space-y-2">{ownAds.length > 0 ? ownAds.map(ad => <AdCard key={ad.id} ad={ad} />) : <p className={currentColors.textSecondary + ' text-sm'}>{txt('등록된 채널 없음', 'No channels')}</p>}</div></div>
-                <div className={`border-t ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'} pt-6`}><h4 className={`text-sm ${currentColors.textSecondary} mb-3`}>{txt('💎 파트너', '💎 Partners')}</h4><div className="space-y-2">{sponsoredAds.length > 0 ? sponsoredAds.map(ad => <AdCard key={ad.id} ad={ad} />) : (<div className={`${currentColors.cardBg} border ${currentColors.cardBorder} rounded-xl p-4 text-center`}><p className={currentColors.textSecondary + ' text-sm'}>{txt('광고 문의', 'Ad Inquiry')}</p><a href="https://t.me/xrp5555555" target="_blank" rel="noopener noreferrer" className="text-[#00d395] text-xs">@xrp5555555</a></div>)}</div></div>
+                <div className={`border-t ${theme === 'dark' ? 'border-white/10' : 'border-gray-200'} pt-6`}><h4 className={`text-sm ${currentColors.textSecondary} mb-3`}>{txt('💎 파트너', '💎 Partners')}</h4><div className="space-y-2">{sponsoredAds.length > 0 ? sponsoredAds.map(ad => <AdCard key={ad.id} ad={ad} />) : (<div className={`${currentColors.cardBg} border ${currentColors.cardBorder} rounded-xl p-4 text-center`}><p className={currentColors.textSecondary + ' text-sm'}>{txt('광고 문의', 'Ad Inquiry')}</p><a href="https://t.me/AI_Signal_Labb" target="_blank" rel="noopener noreferrer" className="text-[#00d395] text-xs">@AI_Signal_Labb</a></div>)}</div></div>
                 <div className={`${currentColors.cardBg} rounded-xl p-4 border ${currentColors.cardBorder}`}><h4 className={`font-bold mb-2 ${currentColors.text}`}>{txt('💡 도움말', '💡 Help')}</h4><ul className={`text-sm ${currentColors.textSecondary} space-y-1`}><li>• {txt('코인 클릭 → 상세 분석', 'Click coin → Details')}</li><li>• {txt('⭐ 클릭 → 즐겨찾기', '⭐ Click → Favorite')}</li><li>• {txt('2분마다 자동 갱신', 'Auto-refresh 2min')}</li></ul></div>
               </div>
             </aside>
@@ -802,7 +802,7 @@ const generateDetailedAIComment = (coin: AnalyzedCoin): string => {
                     </div>
                     <p className="text-yellow-400 text-xs mt-2">{txt('* 선착순 50명 한정', '* First 50 only')}</p>
                   </div>
-                  <a href="https://t.me/xrp5555555" target="_blank" rel="noopener noreferrer" className="block w-full bg-[#00d395] text-black py-3 rounded-xl font-bold text-center hover:bg-[#00d395]/90 transition">{txt('💬 구매 문의 (텔레그램)', '💬 Purchase (Telegram)')}</a>
+                 <a href="https://t.me/AI_Signal_Labb" target="_blank" rel="noopener noreferrer" className="block w-full bg-[#00d395] text-black py-3 rounded-xl font-bold text-center hover:bg-[#00d395]/90 transition">{txt('💬 구매 문의 (텔레그램)', '💬 Purchase (Telegram)')}</a>
                 </div>
               </div>
             </>)}
