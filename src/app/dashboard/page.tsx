@@ -219,7 +219,7 @@ const generateDetailedAIComment = (coin: AnalyzedCoin): string => {
         try { const { data: alertData } = await supabase.from('alert_settings').select('*').eq('user_id', session.user.id).single(); if (mounted) { if (alertData) { setAlertSettings(alertData); setSavedAlertSettings(alertData); setSliderValue(alertData.score_threshold); setInputValue(String(alertData.score_threshold)); if (alertData.telegram_id) setTelegramId(alertData.telegram_id) } else { setAlertSettings({ user_id: session.user.id, selected_coins: ['BTC', 'ETH'], score_threshold: 90, time_morning: true, time_afternoon: true, time_evening: true, time_night: false, alert_signal: true, alert_score_change: true, alert_price: true }) } } } catch (e) {}
         try { const { data: portfolioData } = await supabase.from('portfolio_positions').select('*').eq('user_id', session.user.id).order('created_at', { ascending: false }); if (mounted && portfolioData) setPortfolioPositions(portfolioData) } catch (e) {}
         try { const { data: statsData } = await supabase.from('signal_stats').select('*').single(); if (mounted && statsData) setSignalStats(statsData) } catch (e) {}
-        try { const { data: signalsData } = await supabase.from('recent_signals').select('*').limit(10); if (mounted && signalsData) setRecentSignals(signalsData) } catch (e) {}
+        try { const { data: signalsData } = await supabase.from('signal_history').select('*').order('signal_at', { ascending: false }).limit(10); if (mounted && signalsData) setRecentSignals(signalsData) } catch (e) {}
       } catch (error) { if (mounted) setLoading(false) }
     }
     init()
