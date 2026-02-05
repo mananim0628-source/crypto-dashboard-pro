@@ -26,10 +26,15 @@ export default function PushNotification() {
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
       setIsSupported(true);
-      checkSubscription();
+      // ★ sw.js 등록 후 구독 상태 확인
+      navigator.serviceWorker.register('/sw.js').then(() => {
+        checkSubscription();
+      }).catch((err) => {
+        console.error('SW 등록 실패:', err);
+      });
     }
   }, []);
-
+  
   async function checkSubscription() {
     try {
       const registration = await navigator.serviceWorker.ready;
