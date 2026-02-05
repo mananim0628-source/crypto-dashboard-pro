@@ -10,20 +10,24 @@ export default function Home() {
 
   const faqs = [
     {
-      q: "투자나침반은 무엇인가요?",
-      a: "투자나침반은 암호화폐 시장을 7단계 체크리스트로 분석하는 교육용 보조도구입니다. 거시환경, ETF 자금흐름, 온체인 데이터 등을 종합하여 시장 상황을 점수화합니다. 투자 조언이 아닌, 학습과 참고를 위한 도구입니다."
+      q: "투자나침반은 리딩방인가요?",
+      a: "아닙니다. 투자나침반은 시장 분석 방법론을 학습할 수 있는 교육 도구입니다. 매수/매도 시점을 알려주지 않으며, AI 기반 분석 데이터와 그 근거를 제공하여 사용자가 스스로 판단력을 기를 수 있도록 돕습니다."
     },
     {
-      q: "투자 추천 서비스인가요?",
-      a: "아니요. 투자나침반은 투자 조언, 추천, 권유 서비스가 아닙니다. 시장 데이터를 분석하여 교육 목적의 정보를 제공하는 보조도구이며, 모든 투자 결정은 이용자 본인의 판단과 책임 하에 이루어져야 합니다."
+      q: "점수가 높으면 사도 된다는 뜻인가요?",
+      a: "점수는 현재 시장 상태를 7가지 관점에서 종합 평가한 '학습 참고 지표'입니다. 높은 점수가 매수 시점을 의미하지 않습니다. 점수의 근거를 학습하고, 본인만의 판단 기준을 만들어가는 것이 이 서비스의 목적입니다."
+    },
+    {
+      q: "수익을 보장하나요?",
+      a: "어떤 분석 도구도 수익을 보장할 수 없습니다. 투자나침반은 체계적인 분석 방법론을 학습하는 도구이며, 실제 투자 판단과 결과에 대한 책임은 이용자 본인에게 있습니다."
     },
     {
       q: "7단계 체크리스트는 어떻게 구성되나요?",
-      a: "1.거시환경(20점) 2.ETF/제도권(25점) 3.온체인(25점) 4.AI/메타버스(20점) 5.선물시장(20점) 6.기술적분석(20점) 7.전략(10점)으로 총 140점 만점입니다. 각 항목은 실시간 데이터를 기반으로 자동 계산됩니다."
+      a: "1.거시환경(20점) 2.ETF/제도권(25점) 3.온체인(25점) 4.AI/메타버스(20점) 5.선물시장(20점) 6.기술적분석(20점) 7.전략(10점)으로 총 140점 만점입니다. 각 항목은 실시간 데이터를 기반으로 자동 계산되며, 점수의 근거를 학습할 수 있습니다."
     },
     {
       q: "무료로 이용할 수 있나요?",
-      a: "네, 무료 회원도 핵심 코인 4개의 기본 점수와 시그널을 확인할 수 있습니다. PRO 회원은 7단계 상세 분석, 분석 기준가/상단 저항/하단 지지, AI 코멘트, 무제한 검색 등 모든 기능을 이용할 수 있습니다."
+      a: "네, 무료 회원도 핵심 코인 4개의 기본 점수를 확인할 수 있습니다. PRO 회원은 7단계 상세 분석 리포트, AI 분석 근거 학습노트, 분석 기준가/저항/지지 학습 등 모든 기능을 이용할 수 있습니다."
     },
     {
       q: "환불이 가능한가요?",
@@ -31,7 +35,7 @@ export default function Home() {
     },
     {
       q: "트레이딩뷰 지표도 제공하나요?",
-      a: "네, 트레이딩뷰 커스텀 지표는 별도 상품으로 출시 예정입니다. 웹 대시보드와 함께 사용하면 더욱 효과적인 시장 분석이 가능합니다."
+      a: "네, 트레이딩뷰 커스텀 지표는 VIP 회원에게 포함되며, 별도 상품으로도 출시 예정입니다. 웹 대시보드와 함께 사용하면 더욱 효과적인 시장 분석 학습이 가능합니다."
     }
   ]
 
@@ -84,18 +88,18 @@ export default function Home() {
       <section className="py-16 sm:py-24 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-block px-4 py-2 bg-[#00d395]/10 border border-[#00d395]/30 rounded-full text-[#00d395] text-sm mb-6">
-            🎓 교육용 시장 분석 보조도구
+            🎓 AI 기반 시장분석 학습 도구 — 교육 목적 보조지표
           </div>
           
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 leading-tight">
             <span className="text-[#00d395]">7단계 체크리스트</span>로<br/>
-            시장의 방향을 읽는 법을<br className="sm:hidden"/>
-            배워보세요
+            시장을 읽는 법을<br className="sm:hidden"/>
+            배우세요
           </h1>
           
           <p className="text-base sm:text-lg text-white/70 mb-4 leading-relaxed px-2">
             거시경제, ETF 자금흐름, 온체인 데이터, 기술적 분석까지<br className="hidden sm:block"/>
-            140점 만점 체크리스트로 시장 상황을 객관적으로 분석합니다
+            140점 만점 체크리스트로 시장 상황을 객관적으로 학습합니다
           </p>
 
           <p className="text-sm text-white/50 mb-8">
@@ -104,11 +108,70 @@ export default function Home() {
           
           <div className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
             <Link href="/signup" className="w-full sm:w-auto px-8 py-4 bg-[#00d395] text-black rounded-xl font-semibold hover:bg-[#00d395]/90 transition text-base">
-              🚀 무료로 시작하기
+              🧭 무료 체험 분석 받아보기
             </Link>
             <Link href="#features" className="w-full sm:w-auto px-8 py-4 bg-white/5 border border-white/20 rounded-xl hover:bg-white/10 transition text-base">
-              📊 기능 살펴보기
+              📊 학습 기능 살펴보기
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* 분석 성과 (백테스트 기준) */}
+      <section className="py-12 px-4 border-t border-white/10 bg-[#1a1a2e]/30">
+        <div className="max-w-4xl mx-auto">
+          <p className="text-center text-white/50 text-sm mb-6">분석 성과 (백테스트 기준) — 실제 투자 수익을 보장하지 않습니다</p>
+          <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="bg-[#1a1a2e] rounded-xl p-4 border border-white/10">
+              <p className="text-2xl sm:text-3xl font-bold text-[#00d395]">62%</p>
+              <p className="text-xs text-white/50 mt-1">분석 적중률</p>
+            </div>
+            <div className="bg-[#1a1a2e] rounded-xl p-4 border border-white/10">
+              <p className="text-2xl sm:text-3xl font-bold text-[#00d395]">1:1.5</p>
+              <p className="text-xs text-white/50 mt-1">평균 손익비</p>
+            </div>
+            <div className="bg-[#1a1a2e] rounded-xl p-4 border border-white/10">
+              <p className="text-2xl sm:text-3xl font-bold text-[#00d395]">+5.99%</p>
+              <p className="text-xs text-white/50 mt-1">백테스트 평균 변동폭</p>
+            </div>
+          </div>
+          <p className="text-center text-white/30 text-xs mt-4">※ 과거 데이터 기반 백테스트 결과이며, 미래 수익을 보장하지 않습니다</p>
+        </div>
+      </section>
+
+      {/* 이런 분에게 맞습니다 */}
+      <section className="py-16 px-4 border-t border-white/10">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12">이런 분에게 맞습니다</h2>
+          <div className="space-y-4">
+            <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#00d395]/20 flex items-start gap-4">
+              <span className="text-2xl mt-1">✅</span>
+              <div>
+                <p className="font-semibold mb-1">코인 투자를 시작했지만 어디서부터 분석해야 할지 모르는 초보자</p>
+                <p className="text-sm text-white/50">7단계 체크리스트가 분석의 기본 프레임워크를 잡아드립니다</p>
+              </div>
+            </div>
+            <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#00d395]/20 flex items-start gap-4">
+              <span className="text-2xl mt-1">✅</span>
+              <div>
+                <p className="font-semibold mb-1">감에 의존한 매매를 체계적 분석으로 바꾸고 싶은 투자자</p>
+                <p className="text-sm text-white/50">거시경제부터 기술적 분석까지 데이터 기반 분석 습관을 만듭니다</p>
+              </div>
+            </div>
+            <div className="bg-[#1a1a2e] rounded-xl p-5 border border-[#00d395]/20 flex items-start gap-4">
+              <span className="text-2xl mt-1">✅</span>
+              <div>
+                <p className="font-semibold mb-1">거시경제, 온체인, 기술적 분석을 한눈에 보고 싶은 분</p>
+                <p className="text-sm text-white/50">7가지 관점의 분석 결과를 하나의 대시보드에서 확인합니다</p>
+              </div>
+            </div>
+            <div className="bg-[#1a1a2e] rounded-xl p-5 border border-red-500/20 flex items-start gap-4">
+              <span className="text-2xl mt-1">❌</span>
+              <div>
+                <p className="font-semibold mb-1 text-white/60">&ldquo;언제 사고 팔아야 하는지&rdquo; 알려달라는 분</p>
+                <p className="text-sm text-white/40">이 서비스는 매매 시점을 알려주지 않습니다. 분석 &ldquo;방법&rdquo;을 학습하는 도구입니다</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -142,7 +205,7 @@ export default function Home() {
 
             {/* 7단계 체크리스트 */}
             <div className="bg-[#1a1a2e] rounded-2xl p-4 border border-white/10">
-              <p className="text-sm text-white/50 mb-3">📋 7단계 체크리스트 & 매매 전략</p>
+              <p className="text-sm text-white/50 mb-3">📋 7단계 체크리스트 & 분석 학습 리포트</p>
               <div className="bg-[#0a0a14] rounded-xl overflow-hidden aspect-video flex items-center justify-center">
                 <img 
                   src="/screenshots/checklist.png" 
@@ -309,7 +372,7 @@ export default function Home() {
               <p className="text-3xl font-bold mb-4">₩0</p>
               <ul className="text-sm text-white/60 space-y-2 text-left">
                 <li>✓ 핵심 코인 4개 기본 점수</li>
-                <li>✓ 시그널 확인 (긍정/중립/부정)</li>
+                <li>✓ 시장 상태 확인 (긍정/중립/부정)</li>
                 <li>✓ 즐겨찾기 3개</li>
                 <li className="text-white/30">✗ 7단계 상세 분석</li>
                 <li className="text-white/30">✗ 분석 기준가/상단 저항/하단 지지</li>
@@ -326,9 +389,10 @@ export default function Home() {
               <p className="text-3xl font-bold mb-4">₩49,000<span className="text-sm font-normal">/월</span></p>
               <ul className="text-sm text-white/80 space-y-2 text-left">
                 <li>✓ 모든 무료 기능</li>
-                <li>✓ <strong>7단계 상세 분석</strong></li>
-                <li>✓ <strong>분석 기준가/상단 저항/하단 지지</strong></li>
-                <li>✓ <strong>AI 분석 코멘트</strong></li>
+                <li>✓ <strong>7단계 상세 분석 리포트</strong></li>
+                <li>✓ <strong>AI 분석 근거 학습노트</strong></li>
+                <li>✓ <strong>분석 기준가/저항/지지 학습</strong></li>
+                <li>✓ 일일 시장분석 텔레그램</li>
                 <li>✓ 무제한 코인 검색</li>
                 <li>✓ 상승 코인 TOP 6</li>
               </ul>
@@ -343,9 +407,10 @@ export default function Home() {
               <p className="text-3xl font-bold mb-4">₩149,000<span className="text-sm font-normal">/월</span></p>
               <ul className="text-sm text-white/60 space-y-2 text-left">
                 <li>✓ PRO 모든 기능</li>
-                <li>✓ <strong className="text-white">텔레그램 알림</strong></li>
-                <li>✓ <strong className="text-white">VIP 전용 채팅방</strong></li>
-                <li>✓ <strong className="text-white">1:1 상담</strong></li>
+                <li>✓ <strong className="text-white">1:1 분석 질문 응대</strong></li>
+                <li>✓ <strong className="text-white">주간 심화 분석 리포트</strong></li>
+                <li>✓ <strong className="text-white">커스텀 코인 분석 요청</strong></li>
+                <li>✓ <strong className="text-white">트레이딩뷰 지표 포함</strong></li>
                 <li>✓ 우선 고객 지원</li>
               </ul>
               <Link href="/signup" className="block mt-6 py-2 border border-white/20 rounded-lg hover:bg-white/10 transition text-sm">
@@ -392,16 +457,16 @@ export default function Home() {
       <section className="py-16 px-4 border-t border-white/10 bg-gradient-to-b from-transparent to-[#00d395]/5">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4">
-            지금 바로 시작하세요
+            체계적인 시장 분석,<br className="sm:hidden"/> 지금 시작하세요
           </h2>
           <p className="text-white/60 mb-8">
-            무료로 가입하고 시장 분석 도구를 체험해보세요
+            무료로 가입하고 7단계 체크리스트 분석을 체험해보세요
           </p>
           <Link href="/signup" className="inline-block px-8 py-4 bg-[#00d395] text-black rounded-xl font-semibold hover:bg-[#00d395]/90 transition text-lg">
-            🧭 무료로 시작하기
+            🧭 무료 체험 분석 받아보기
           </Link>
           <p className="text-white/40 text-sm mt-4">
-            가입 후 즉시 무료 기능 이용 가능
+            가입 후 즉시 핵심 코인 4개 분석 확인 가능
           </p>
         </div>
       </section>
