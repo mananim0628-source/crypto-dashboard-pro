@@ -14,6 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#00D395" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+      </head>
       <body>{children}</body>
     </html>
   )
