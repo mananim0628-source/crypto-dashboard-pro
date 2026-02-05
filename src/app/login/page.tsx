@@ -75,7 +75,7 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="card max-w-md w-full">
         <Link href="/" className="block text-center mb-8">
-          <span className="text-3xl font-bold gradient-text">🚀 크립토 PRO</span>
+          <span className="text-3xl font-bold gradient-text">🧭 투자나침반</span>
         </Link>
 
         <h1 className="text-2xl font-bold text-center mb-6">로그인</h1>
