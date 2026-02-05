@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>투자나침반 - AI 기반 암호화폐 투자 판단력 교육 도구</title>
+    <meta name="description" content="7단계 체크리스트로 기준 있는 매매를 배우세요. AI가 분석하고, 당신이 판단합니다.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00d395;
+            --primary-dark: #00b380;
+            --primary-glow: rgba(0, 211, 149, 0.12);
+            --bg-deep: #060610;
+            --bg-dark: #0a0a14;
+            --bg-card: #111120;
+            --bg-card-alt: #161628;
+            --text-primary: #f0f0f5;
+            --text-secondary: #9a9ab0;
+            --text-muted: #5a5a70;
+            --danger: #ff5c5c;
+            --danger-soft: rgba(255, 92, 92, 0.12);
+            --warning: #ffd93d;
+            --accent-blue: #4d9fff;
+            --gradient-main: linear-gradient(135deg, #00d395 0%, #00a3ff 100%);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Noto Sans KR', -apple-system, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            line-height: 1.8;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .ambient {
+            position: fixed; inset: 0; z-index: -1; pointer-events: none;
+            background:
+                radial-gradient(ellipse 600px 600px at 15% 15%, rgba(0,211,149,0.04) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 500px at 85% 80%, rgba(77,159,255,0.03) 0%, transparent 70%),
+                var(--bg-deep);
+        }
+
+        .container { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+        section { padding: 100px 0; }
+
+        /* NAV */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            background: rgba(6,6,16,0.85); backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            padding: 16px 24px;
+        }
+        .nav-inner {
+            max-width: 920px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .nav-logo { font-size: 18px; font-weight: 700; color: var(--primary); text-decoration: none; letter-spacing: -0.5px; }
+        .nav-cta {
+            background: var(--primary); color: #000; padding: 8px 20px;
+            border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 600;
+            transition: all 0.2s;
+        }
+        .nav-cta:hover { background: var(--primary-dark); transform: translateY(-1px); }
+
+        /* HERO */
+        .hero {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            text-align: center; padding: 140px 24px 100px;
+        }
+        .hero-content { max-width: 680px; }
+        .hero-tag {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--primary-glow); border: 1px solid rgba(0,211,149,0.2);
+            padding: 6px 16px; border-radius: 100px; font-size: 13px; color: var(--primary);
+            margin-bottom: 32px;
+        }
+        .hero-tag::before { content: ''; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; }
+        .hero h1 {
+            font-size: clamp(32px, 6vw, 52px); font-weight: 900; line-height: 1.25;
+            letter-spacing: -1.5px; margin-bottom: 24px;
+        }
+        .hero h1 .accent { color: var(--primary); }
+        .hero-sub {
+            font-size: clamp(16px, 2.5vw, 20px); color: var(--text-secondary);
+            line-height: 1.7; margin-bottom: 48px; font-weight: 300;
+        }
+        .hero-sub strong { color: var(--text-primary); font-weight: 500; }
+        .hero-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* BUTTONS */
+        .btn {
+            display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+            padding: 14px 32px; border-radius: 10px; font-size: 15px; font-weight: 600;
+            text-decoration: none; transition: all 0.25s; cursor: pointer; border: none;
+        }
+        .btn-primary {
+            background: var(--gradient-main); color: #000;
+            box-shadow: 0 4px 24px rgba(0,211,149,0.25);
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,211,149,0.35); }
+        .btn-ghost {
+            background: rgba(255,255,255,0.05); color: var(--text-primary);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        .btn-large { padding: 16px 40px; font-size: 16px; border-radius: 12px; }
+
+        /* PAIN */
+        .pain { background: var(--bg-dark); border-top: 1px solid rgba(255,255,255,0.03); }
+        .pain-header { text-align: center; margin-bottom: 56px; }
+        .pain-header h2 {
+            font-size: clamp(24px, 4vw, 36px); font-weight: 800; line-height: 1.3;
+            letter-spacing: -1px; margin-bottom: 16px;
+        }
+        .pain-header p { color: var(--text-secondary); font-size: 16px; max-width: 560px; margin: 0 auto; }
+        .pain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .pain-card {
+            background: var(--bg-card); border: 1px solid rgba(255,92,92,0.08);
+            border-radius: 14px; padding: 28px; transition: all 0.3s;
+        }
+        .pain-card:hover { border-color: rgba(255,92,92,0.2); transform: translateY(-2px); }
+        .pain-icon { font-size: 28px; margin-bottom: 14px; }
+        .pain-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; color: var(--danger); }
+        .pain-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+
+        /* HOOK */
+        .hook {
+            text-align: center; padding: 120px 24px;
+            background: linear-gradient(180deg, var(--bg-dark) 0%, var(--bg-deep) 100%);
+        }
+        .hook-question {
+            font-size: clamp(20px, 4vw, 32px); font-weight: 300; color: var(--text-secondary);
+            margin-bottom: 24px; line-height: 1.5;
+        }
+        .hook-answer {
+            font-size: clamp(28px, 5vw, 44px); font-weight: 900; line-height: 1.3;
+            letter-spacing: -1.5px; margin-bottom: 24px;
+        }
+        .hook-answer .hl {
+            background: linear-gradient(135deg, var(--primary), var(--accent-blue));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .hook-desc {
+            font-size: 17px; color: var(--text-secondary); max-width: 540px;
+            margin: 0 auto; line-height: 1.8; font-weight: 300;
+        }
+
+        /* BEFORE/AFTER */
+        .transform { background: var(--bg-dark); border-top: 1px solid rgba(255,255,255,0.03); }
+        .transform-header { text-align: center; margin-bottom: 56px; }
+        .transform-header h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -1px; }
+        .transform-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .transform-col { border-radius: 16px; padding: 36px 28px; }
+        .transform-col.before {
+            background: linear-gradient(180deg, rgba(255,92,92,0.06) 0%, var(--bg-card) 100%);
+            border: 1px solid rgba(255,92,92,0.1);
+        }
+        .transform-col.after {
+            background: linear-gradient(180deg, rgba(0,211,149,0.06) 0%, var(--bg-card) 100%);
+            border: 1px solid rgba(0,211,149,0.1);
+        }
+        .transform-label {
+            display: inline-block; padding: 4px 12px; border-radius: 6px;
+            font-size: 12px; font-weight: 700; letter-spacing: 1px; margin-bottom: 24px;
+        }
+        .before .transform-label { background: var(--danger-soft); color: var(--danger); }
+        .after .transform-label { background: var(--primary-glow); color: var(--primary); }
+        .transform-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .transform-item:last-child { border-bottom: none; }
+        .transform-item .icon { font-size: 18px; flex-shrink: 0; margin-top: 2px; }
+        .transform-item .text { font-size: 15px; color: var(--text-secondary); line-height: 1.6; }
+        .transform-item .text strong { color: var(--text-primary); font-weight: 600; }
+
+        /* STATS */
+        .stats-strip {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px;
+            background: rgba(255,255,255,0.04); border-radius: 16px; overflow: hidden;
+            margin-top: 48px;
+        }
+        .stat-item { background: var(--bg-card); padding: 28px 20px; text-align: center; }
+        .stat-value {
+            font-size: clamp(24px, 3.5vw, 32px); font-weight: 900; color: var(--primary);
+            letter-spacing: -1px;
+        }
+        .stat-label { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
+        .stat-note { text-align: center; margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+
+        /* HOW IT WORKS */
+        .how { background: var(--bg-deep); }
+        .how-header { text-align: center; margin-bottom: 64px; }
+        .how-header h2 {
+            font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -1px;
+            margin-bottom: 16px;
+        }
+        .how-header p { color: var(--text-secondary); font-size: 16px; max-width: 520px; margin: 0 auto; }
+        .steps { display: flex; flex-direction: column; gap: 0; position: relative; }
+        .steps::before {
+            content: ''; position: absolute; left: 28px; top: 40px; bottom: 40px;
+            width: 2px; background: linear-gradient(180deg, var(--primary), var(--accent-blue));
+            opacity: 0.2;
+        }
+        .step { display: flex; gap: 24px; align-items: flex-start; padding: 24px 0; }
+        .step-num {
+            width: 56px; height: 56px; border-radius: 14px; flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; font-weight: 900; color: var(--primary);
+            background: var(--primary-glow); border: 1px solid rgba(0,211,149,0.15);
+        }
+        .step-content h3 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+        .step-content p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+
+        /* RATIO */
+        .ratio { background: var(--bg-dark); border-top: 1px solid rgba(255,255,255,0.03); }
+        .ratio-header { text-align: center; margin-bottom: 48px; }
+        .ratio-header h2 { font-size: clamp(22px, 4vw, 32px); font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
+        .ratio-header p { color: var(--text-secondary); font-size: 15px; }
+        .ratio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; max-width: 700px; margin: 0 auto; }
+        .ratio-card { border-radius: 14px; padding: 32px 24px; text-align: center; }
+        .ratio-card.bad { background: var(--bg-card); border: 1px solid rgba(255,92,92,0.1); }
+        .ratio-card.good { background: var(--bg-card); border: 1px solid rgba(0,211,149,0.15); }
+        .ratio-card .label { font-size: 13px; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 16px; }
+        .ratio-card.bad .label { color: var(--danger); }
+        .ratio-card.good .label { color: var(--primary); }
+        .ratio-card .big-num { font-size: 36px; font-weight: 900; margin-bottom: 16px; }
+        .ratio-card.bad .big-num { color: var(--text-muted); }
+        .ratio-card.good .big-num { color: var(--primary); }
+        .ratio-card .detail { font-size: 13px; color: var(--text-secondary); line-height: 1.8; text-align: left; }
+        .ratio-card .result {
+            margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.06);
+            font-size: 15px; font-weight: 700;
+        }
+        .ratio-card.bad .result { color: var(--text-muted); }
+        .ratio-card.good .result { color: var(--primary); }
+        .ratio-insight {
+            text-align: center; margin-top: 32px; padding: 24px;
+            background: var(--primary-glow); border-radius: 12px;
+            border: 1px solid rgba(0,211,149,0.1); max-width: 700px; margin-left: auto; margin-right: auto;
+        }
+        .ratio-insight p { font-size: 15px; color: var(--text-primary); font-weight: 500; }
+
+        /* FEATURES */
+        .features { background: var(--bg-deep); }
+        .features-header { text-align: center; margin-bottom: 56px; }
+        .features-header h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+        .features-header p { color: var(--text-secondary); font-size: 16px; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .feature-card {
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 14px; padding: 28px; transition: all 0.3s;
+        }
+        .feature-card:hover { border-color: rgba(0,211,149,0.15); transform: translateY(-2px); }
+        .feature-icon { font-size: 28px; margin-bottom: 14px; }
+        .feature-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+        .feature-card p { font-size: 14px; color: var(--text-secondary); line-height: 1.7; }
+
+        /* TARGET */
+        .target { background: var(--bg-dark); border-top: 1px solid rgba(255,255,255,0.03); }
+        .target-header { text-align: center; margin-bottom: 48px; }
+        .target-header h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -1px; }
+        .target-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+        .target-card {
+            display: flex; align-items: flex-start; gap: 16px;
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 14px; padding: 24px;
+        }
+        .target-card .emoji { font-size: 32px; flex-shrink: 0; }
+        .target-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+        .target-card p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+
+        /* PRICING */
+        .pricing { background: var(--bg-deep); }
+        .pricing-header { text-align: center; margin-bottom: 56px; }
+        .pricing-header h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -1px; margin-bottom: 12px; }
+        .pricing-header p { color: var(--text-secondary); font-size: 16px; }
+        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .price-card {
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 16px; padding: 32px 24px; position: relative;
+            display: flex; flex-direction: column;
+        }
+        .price-card.featured {
+            border-color: rgba(0,211,149,0.3);
+            background: linear-gradient(180deg, rgba(0,211,149,0.04) 0%, var(--bg-card) 100%);
+        }
+        .price-badge {
+            position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+            background: var(--gradient-main); color: #000; padding: 4px 16px;
+            border-radius: 100px; font-size: 12px; font-weight: 700;
+        }
+        .price-card h3 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+        .price-amount { font-size: 32px; font-weight: 900; margin-bottom: 4px; }
+        .price-period { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+        .price-features { list-style: none; margin-bottom: 28px; flex: 1; }
+        .price-features li {
+            padding: 8px 0; font-size: 14px; color: var(--text-secondary);
+            display: flex; align-items: center; gap: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+        .price-features li::before { content: '✓'; color: var(--primary); font-weight: 700; font-size: 13px; }
+        .price-btn {
+            display: block; width: 100%; padding: 14px; border-radius: 10px;
+            text-align: center; text-decoration: none; font-size: 15px; font-weight: 600;
+            transition: all 0.25s;
+        }
+        .price-btn.free { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+        .price-btn.free:hover { background: rgba(255,255,255,0.1); }
+        .price-btn.pro { background: var(--gradient-main); color: #000; box-shadow: 0 4px 20px rgba(0,211,149,0.2); }
+        .price-btn.pro:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,211,149,0.3); }
+        .price-btn.vip { background: rgba(255,255,255,0.06); color: var(--primary); border: 1px solid rgba(0,211,149,0.2); }
+        .price-btn.vip:hover { background: var(--primary-glow); }
+
+        /* TRADINGVIEW */
+        .tv-section { background: var(--bg-dark); border-top: 1px solid rgba(255,255,255,0.03); }
+        .tv-card {
+            background: var(--bg-card); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px; padding: 48px; text-align: center;
+            max-width: 600px; margin: 0 auto;
+        }
+        .tv-card h2 { font-size: 24px; font-weight: 800; margin-bottom: 12px; }
+        .tv-card p { color: var(--text-secondary); font-size: 15px; margin-bottom: 24px; }
+        .tv-features { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 28px; }
+        .tv-tag {
+            background: rgba(255,255,255,0.05); padding: 6px 14px; border-radius: 8px;
+            font-size: 13px; color: var(--text-secondary);
+        }
+        .tv-price { margin-bottom: 20px; }
+        .tv-price .old { font-size: 16px; color: var(--text-muted); text-decoration: line-through; }
+        .tv-price .new { font-size: 32px; font-weight: 900; color: var(--primary); margin-left: 8px; }
+        .tv-price .period { font-size: 14px; color: var(--text-muted); }
+        .tv-limit { font-size: 13px; color: var(--warning); margin-bottom: 20px; }
+
+        /* FAQ */
+        .faq { background: var(--bg-deep); }
+        .faq-header { text-align: center; margin-bottom: 48px; }
+        .faq-header h2 { font-size: clamp(24px, 4vw, 36px); font-weight: 800; letter-spacing: -1px; }
+        .faq-list { max-width: 680px; margin: 0 auto; }
+        .faq-item { border-bottom: 1px solid rgba(255,255,255,0.04); overflow: hidden; }
+        .faq-q {
+            padding: 20px 0; cursor: pointer; font-size: 16px; font-weight: 600;
+            display: flex; justify-content: space-between; align-items: center;
+            color: var(--text-primary);
+        }
+        .faq-q::after {
+            content: '+'; font-size: 20px; color: var(--text-muted); transition: transform 0.3s;
+            flex-shrink: 0; margin-left: 16px;
+        }
+        .faq-item.open .faq-q::after { content: '−'; color: var(--primary); }
+        .faq-a { max-height: 0; overflow: hidden; transition: max-height 0.4s ease, padding 0.3s; }
+        .faq-item.open .faq-a { max-height: 300px; padding-bottom: 20px; }
+        .faq-a p { font-size: 14px; color: var(--text-secondary); line-height: 1.8; }
+
+        /* FINAL CTA */
+        .final-cta {
+            text-align: center; padding: 120px 24px;
+            background: linear-gradient(180deg, var(--bg-deep) 0%, var(--bg-dark) 50%, var(--bg-deep) 100%);
+        }
+        .final-cta h2 {
+            font-size: clamp(28px, 5vw, 42px); font-weight: 900; line-height: 1.3;
+            letter-spacing: -1.5px; margin-bottom: 20px;
+        }
+        .final-cta p { color: var(--text-secondary); font-size: 17px; margin-bottom: 40px; max-width: 480px; margin-left: auto; margin-right: auto; line-height: 1.8; }
+        .final-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* FOOTER */
+        footer {
+            padding: 40px 24px; text-align: center;
+            border-top: 1px solid rgba(255,255,255,0.04);
+        }
+        footer p { font-size: 13px; color: var(--text-muted); }
+        footer .warn { color: var(--warning); margin-top: 8px; font-size: 12px; }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            section { padding: 72px 0; }
+            .transform-grid { grid-template-columns: 1fr; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .ratio-grid { grid-template-columns: 1fr; }
+            .stats-strip { grid-template-columns: repeat(2, 1fr); }
+            .hero { padding: 120px 20px 80px; }
+            .hook { padding: 80px 20px; }
+            .tv-card { padding: 32px 20px; }
+            .step { gap: 16px; }
+            .step-num { width: 44px; height: 44px; font-size: 16px; border-radius: 10px; }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 28px; }
+            .btn { padding: 12px 24px; font-size: 14px; }
+            .btn-large { padding: 14px 28px; font-size: 15px; }
+            .nav-cta { padding: 6px 14px; font-size: 13px; }
+        }
+
+        /* ANIMATIONS */
+        .fade-up {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+        .fade-up.visible { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<!-- NAV -->
+<nav class="nav">
+    <div class="nav-inner">
+        <a href="#" class="nav-logo">🧭 투자나침반</a>
+        <a href="https://www.latpeed.com/memberships/6826d3aa2ce9b92d5c889a3f" target="_blank" class="nav-cta">PRO 시작하기</a>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+    <div class="hero-content fade-up">
+        <div class="hero-tag">AI 기반 투자 판단력 교육 도구</div>
+        <h1>매매에 <span class="accent">기준</span>이 생기면<br>시장이 달라 보입니다</h1>
+        <p class="hero-sub">
+            "왜 샀어?" 이 질문에 답할 수 있나요?<br>
+            <strong>7단계 체크리스트</strong>로 감이 아닌 기준으로 판단하는 법을 배우세요.<br>
+            AI가 분석하고, 당신이 판단합니다.
+        </p>
+        <div class="hero-buttons">
+            <a href="https://navcp.vercel.app/dashboard" target="_blank" class="btn btn-primary btn-large">무료로 체험하기</a>
+            <a href="javascript:void(0)" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})" class="btn btn-ghost btn-large">요금제 보기</a>
+        </div>
+    </div>
+</section>
+
+<!-- PAIN POINTS -->
+<section class="pain">
+    <div class="container">
+        <div class="pain-header fade-up">
+            <h2>혹시 이런 경험, 계속 반복되고 있지 않나요?</h2>
+            <p>대부분의 개인 투자자가 겪는 문제입니다. 당신 잘못이 아니에요.</p>
+        </div>
+        <div class="pain-grid">
+            <div class="pain-card fade-up">
+                <div class="pain-icon">📰</div>
+                <h3>뉴스 보고 추격매수</h3>
+                <p>"급등 기사 떴다, 나도 빨리…" 하고 들어갔다가 고점에 물립니다. 매번 같은 패턴이에요.</p>
+            </div>
+            <div class="pain-card fade-up">
+                <div class="pain-icon">🎰</div>
+                <h3>감으로 매매</h3>
+                <p>"느낌이 좋아서" 들어가고, "이번엔 다를 거야" 하다가 또 손절합니다. 기준이 없으니 매번 다른 결과.</p>
+            </div>
+            <div class="pain-card fade-up">
+                <div class="pain-icon">😤</div>
+                <h3>져도 왜 졌는지 모름</h3>
+                <p>수익은 작게 먹고, 손실은 크게 맞습니다. 복기를 하고 싶어도 기록할 기준 자체가 없어요.</p>
+            </div>
+            <div class="pain-card fade-up">
+                <div class="pain-icon">🔄</div>
+                <h3>같은 실수 반복</h3>
+                <p>"다음엔 안 그래야지" 하면서 또 같은 실수. 문제는 의지력이 아니라 <strong>시스템의 부재</strong>입니다.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- HOOK -->
+<section class="hook">
+    <div class="container fade-up">
+        <p class="hook-question">그럼 뭐가 달라져야 할까요?</p>
+        <h2 class="hook-answer"><span class="hl">기준</span>이 있으면<br>감정이 끼어들 틈이 없습니다</h2>
+        <p class="hook-desc">
+            매수 전에 체크리스트를 확인하는 습관 하나가<br>
+            FOMO를 막고, 손절을 지키게 하고,<br>
+            져도 복기할 수 있는 구조를 만듭니다.
+        </p>
+    </div>
+</section>
+
+<!-- BEFORE / AFTER -->
+<section class="transform">
+    <div class="container">
+        <div class="transform-header fade-up"><h2>기준이 생기면, 이렇게 달라져요</h2></div>
+        <div class="transform-grid fade-up">
+            <div class="transform-col before">
+                <div class="transform-label">기준 없는 매매</div>
+                <div class="transform-item"><span class="icon">😵</span><div class="text">"<strong>느낌이 좋아서</strong>" 매수</div></div>
+                <div class="transform-item"><span class="icon">📰</span><div class="text">뉴스 보고 <strong>FOMO 매매</strong></div></div>
+                <div class="transform-item"><span class="icon">🎲</span><div class="text">손절 기준 없이 <strong>버티기</strong></div></div>
+                <div class="transform-item"><span class="icon">💸</span><div class="text">이길 때 작게, <strong>질 때 크게</strong></div></div>
+                <div class="transform-item"><span class="icon">🤷</span><div class="text">왜 졌는지 <strong>설명 불가</strong></div></div>
+            </div>
+            <div class="transform-col after">
+                <div class="transform-label">체크리스트 기반 매매</div>
+                <div class="transform-item"><span class="icon">📊</span><div class="text"><strong>7단계 점수</strong>로 판단</div></div>
+                <div class="transform-item"><span class="icon">🛡️</span><div class="text">기준이 있어 <strong>FOMO 차단</strong></div></div>
+                <div class="transform-item"><span class="icon">🎯</span><div class="text">진입 전 <strong>손절가 설정</strong> 완료</div></div>
+                <div class="transform-item"><span class="icon">💰</span><div class="text">이길 때 크게, <strong>질 때 작게</strong></div></div>
+                <div class="transform-item"><span class="icon">📈</span><div class="text">져도 <strong>복기 → 성장</strong> 가능</div></div>
+            </div>
+        </div>
+
+        <div class="stats-strip fade-up">
+            <div class="stat-item"><div class="stat-value">62%</div><div class="stat-label">백테스트 승률</div></div>
+            <div class="stat-item"><div class="stat-value">1:1.5</div><div class="stat-label">평균 손익비</div></div>
+            <div class="stat-item"><div class="stat-value">+5.99%</div><div class="stat-label">평균 수익</div></div>
+            <div class="stat-item"><div class="stat-value">+18%</div><div class="stat-label">최대 수익</div></div>
+        </div>
+        <p class="stat-note">* 2024.12 ~ 2025.01 백테스트 기준. 과거 성과는 미래 수익을 보장하지 않습니다.</p>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how">
+    <div class="container">
+        <div class="how-header fade-up">
+            <h2>7단계 체크리스트는 이렇게 작동합니다</h2>
+            <p>AI가 7가지 영역을 분석해서 140점 만점 점수를 매깁니다.<br>당신은 점수를 보고 판단만 하면 돼요.</p>
+        </div>
+        <div class="steps fade-up">
+            <div class="step"><div class="step-num">1</div><div class="step-content"><h3>거시환경 분석 (20점)</h3><p>미국 금리, 달러 인덱스, 시장 심리 등 큰 그림부터 봅니다. 시장 전체가 좋은지 나쁜지를 먼저 확인해요.</p></div></div>
+            <div class="step"><div class="step-num">2</div><div class="step-content"><h3>ETF·제도권 자금 (25점)</h3><p>비트코인 ETF 유입량, 기관 투자자 움직임을 체크합니다. 큰손이 들어오는지 빠지는지가 핵심이에요.</p></div></div>
+            <div class="step"><div class="step-num">3</div><div class="step-content"><h3>온체인 핵심 지표 (25점)</h3><p>실제 블록체인 데이터를 분석합니다. 장기 보유자가 팔고 있는지, 거래소 입출금 흐름은 어떤지 확인해요.</p></div></div>
+            <div class="step"><div class="step-num">4</div><div class="step-content"><h3>AI·메타버스 섹터 (20점)</h3><p>AI, DeFi, 메타버스 등 해당 코인의 섹터 트렌드를 분석합니다. 지금 돈이 어느 섹터로 흐르는지를 봐요.</p></div></div>
+            <div class="step"><div class="step-num">5</div><div class="step-content"><h3>선물시장 분석 (20점)</h3><p>선물 미결제약정, 펀딩비, 롱숏 비율을 확인합니다. 과열인지, 침체인지 시장 온도를 재요.</p></div></div>
+            <div class="step"><div class="step-num">6</div><div class="step-content"><h3>기술적 분석 (20점)</h3><p>이동평균선, RSI, MACD, 지지·저항선 등 차트 분석입니다. 타이밍을 잡는 마지막 필터예요.</p></div></div>
+            <div class="step"><div class="step-num">7</div><div class="step-content"><h3>종합 전략 (10점)</h3><p>6가지 분석을 종합해서 최종 판단을 내립니다. 추천 포지션 비중, 레버리지, 손익비까지 제시해요.</p></div></div>
+        </div>
+    </div>
+</section>
+
+<!-- RATIO -->
+<section class="ratio">
+    <div class="container">
+        <div class="ratio-header fade-up">
+            <h2>승률보다 중요한 건 "얼마나 크게 이기느냐"</h2>
+            <p>승률 62%와 손익비 1:1.5의 조합이 만드는 차이를 보세요.</p>
+        </div>
+        <div class="ratio-grid fade-up">
+            <div class="ratio-card bad">
+                <div class="label">승률 80% / 손익비 1:0.5</div>
+                <div class="big-num">+10%</div>
+                <div class="detail">10번 매매 시:<br>8번 이김 × 2.5% = +20%<br>2번 짐 × 5% = -10%</div>
+                <div class="result">순수익 +10%</div>
+            </div>
+            <div class="ratio-card good">
+                <div class="label">승률 62% / 손익비 1:1.5</div>
+                <div class="big-num">+20%</div>
+                <div class="detail">10번 매매 시:<br>6번 이김 × 6% = +36%<br>4번 짐 × 4% = -16%</div>
+                <div class="result">순수익 +20%</div>
+            </div>
+        </div>
+        <div class="ratio-insight fade-up"><p>💡 이길 때 크게 이기고, 질 때 작게 지는 구조 = 꾸준한 우상향</p></div>
+    </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features">
+    <div class="container">
+        <div class="features-header fade-up">
+            <h2>학습을 돕는 도구들</h2>
+            <p>체크리스트 외에도 투자 판단력을 키우는 기능이 있어요.</p>
+        </div>
+        <div class="features-grid fade-up">
+            <div class="feature-card"><div class="feature-icon">🎯</div><h3>리스크 관리 시뮬레이션</h3><p>AI가 계산한 교육용 참고 가격대입니다. 진입가, 목표가, 손절가를 미리 시뮬레이션해 볼 수 있어요.</p></div>
+            <div class="feature-card"><div class="feature-icon">🤖</div><h3>AI 코멘트</h3><p>왜 이 점수가 나왔는지, 지금 시장에서 주의할 점이 뭔지 AI가 설명해드려요.</p></div>
+            <div class="feature-card"><div class="feature-icon">🔔</div><h3>텔레그램 리포트 (PRO)</h3><p>주요 코인의 체크리스트 분석 결과를 텔레그램으로 받아보세요. 시장 변화를 놓치지 않아요.</p></div>
+            <div class="feature-card"><div class="feature-icon">📊</div><h3>매매일지</h3><p>내 포지션의 수익률과 승률을 기록하고 확인하세요. 복기가 쌓이면 실력이 늘어요.</p></div>
+            <div class="feature-card"><div class="feature-icon">🔍</div><h3>무제한 코인 분석</h3><p>코인게코에 등록된 모든 코인을 검색하고 7단계 체크리스트로 분석해 볼 수 있어요.</p></div>
+            <div class="feature-card"><div class="feature-icon">📈</div><h3>실시간 상승 코인 TOP</h3><p>지금 시장에서 주목받는 코인들의 체크리스트 점수를 한눈에 확인하세요.</p></div>
+        </div>
+    </div>
+</section>
+
+<!-- TARGET -->
+<section class="target">
+    <div class="container">
+        <div class="target-header fade-up"><h2>이런 분에게 맞습니다</h2></div>
+        <div class="target-grid fade-up">
+            <div class="target-card"><div class="emoji">🌱</div><div><h3>코인 투자를 처음 시작하는 분</h3><p>차트를 몰라도 됩니다. 점수만 보고 판단하는 습관을 먼저 만드세요.</p></div></div>
+            <div class="target-card"><div class="emoji">😤</div><div><h3>감으로 매매하다 지치신 분</h3><p>감정 매매를 반복하고 계신가요? 체크리스트가 감정이 끼어들 틈을 없애줍니다.</p></div></div>
+            <div class="target-card"><div class="emoji">📉</div><div><h3>기준 없이 손실이 커진 분</h3><p>문제는 의지력이 아니라 시스템이에요. 매수 전 확인하는 루틴 하나로 달라질 수 있어요.</p></div></div>
+            <div class="target-card"><div class="emoji">🧠</div><div><h3>체계적으로 공부하고 싶은 분</h3><p>거시경제, 온체인, 기술적 분석까지 한 번에 배우고 실전에 적용해보세요.</p></div></div>
+        </div>
+    </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+    <div class="container">
+        <div class="pricing-header fade-up">
+            <h2>나에게 맞는 학습 도구 선택</h2>
+            <p>무료로 먼저 체험하고, 필요하면 업그레이드하세요.</p>
+        </div>
+        <div class="pricing-grid fade-up">
+            <div class="price-card">
+                <h3>무료</h3><div class="price-amount">₩0</div><div class="price-period">영구 무료</div>
+                <ul class="price-features">
+                    <li>핵심 코인 4개 (BTC, ETH, XRP, BNB)</li>
+                    <li>기본 시장 상태 확인</li>
+                    <li>체크리스트 점수 확인</li>
+                    <li>상승 코인 TOP 6</li>
+                    <li>리스크 시뮬레이션 (참고용)</li>
+                </ul>
+                <a href="https://navcp.vercel.app/dashboard" target="_blank" class="price-btn free">무료로 시작</a>
+            </div>
+            <div class="price-card featured">
+                <div class="price-badge">추천</div>
+                <h3>PRO</h3><div class="price-amount">₩49,000</div><div class="price-period">월</div>
+                <ul class="price-features">
+                    <li>무료 기능 전체 포함</li>
+                    <li>7단계 체크리스트 상세 분석</li>
+                    <li>무제한 코인 검색·분석</li>
+                    <li>AI 코멘트 해설</li>
+                    <li>텔레그램 리포트 수신</li>
+                    <li>매매일지 기록</li>
+                </ul>
+                <a href="https://www.latpeed.com/memberships/6826d3aa2ce9b92d5c889a3f" target="_blank" class="price-btn pro">PRO 시작하기</a>
+            </div>
+            <div class="price-card">
+                <h3>VIP</h3><div class="price-amount">₩149,000</div><div class="price-period">월</div>
+                <ul class="price-features">
+                    <li>PRO 기능 전체 포함</li>
+                    <li>1:1 줌 상담 (월 1회)</li>
+                    <li>VIP 전용 학습 채팅방</li>
+                    <li>우선 고객 지원</li>
+                    <li>신규 기능 우선 체험</li>
+                </ul>
+                <a href="https://www.latpeed.com/memberships/6826d3aa2ce9b92d5c889a3f" target="_blank" class="price-btn vip">VIP 시작하기</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- TRADINGVIEW -->
+<section class="tv-section">
+    <div class="container">
+        <div class="tv-card fade-up">
+            <h2>📈 트레이딩뷰 체크리스트 지표</h2>
+            <p>트레이딩뷰 차트에서 직접 7단계 체크리스트를 확인하세요.</p>
+            <div class="tv-features">
+                <span class="tv-tag">7단계 자동 점수화</span>
+                <span class="tv-tag">가격대 시뮬레이션</span>
+                <span class="tv-tag">모든 타임프레임</span>
+                <span class="tv-tag">크립토·주식·선물</span>
+            </div>
+            <div class="tv-price"><span class="old">$199/월</span><span class="new">$99</span><span class="period">/월</span></div>
+            <p class="tv-limit">⚡ 선착순 50명 한정</p>
+            <a href="https://t.me/xrp5555555" target="_blank" class="btn btn-ghost">구매 문의 (텔레그램)</a>
+        </div>
+    </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+    <div class="container">
+        <div class="faq-header fade-up"><h2>자주 묻는 질문</h2></div>
+        <div class="faq-list fade-up">
+            <div class="faq-item"><div class="faq-q">리딩방인가요?</div><div class="faq-a"><p>아닙니다. 투자나침반은 투자 판단력을 기르기 위한 <strong>교육 도구</strong>입니다. "이거 사세요"가 아니라 "이 코인의 현재 상태가 이렇습니다"를 보여주는 거예요. 매수·매도 결정은 전적으로 학습자 본인의 판단입니다.</p></div></div>
+            <div class="faq-item"><div class="faq-q">점수 높으면 사도 되나요?</div><div class="faq-a"><p>점수는 현재 시장 상태를 7가지 관점으로 분석한 <strong>교육용 참고 지표</strong>입니다. "점수가 높다 = 매수하라"가 아니라, "이만큼의 조건이 긍정적이다"를 나타내요. 최종 판단은 본인의 투자 성향과 자금 상황에 맞게 하셔야 합니다.</p></div></div>
+            <div class="faq-item"><div class="faq-q">코인 초보도 쓸 수 있나요?</div><div class="faq-a"><p>오히려 초보자분께 더 맞는 도구예요. 차트 분석을 몰라도, 거시경제를 몰라도 괜찮습니다. 체크리스트 점수와 AI 코멘트를 읽으면서 자연스럽게 시장을 보는 눈이 생겨요. "공부하면서 실전에 적용"하는 구조입니다.</p></div></div>
+            <div class="faq-item"><div class="faq-q">환불이 가능한가요?</div><div class="faq-a"><p>디지털 콘텐츠 특성상 결제 즉시 이용 가능하여 원칙적으로 환불 불가합니다 (전자상거래법 제17조 제2항). 단, 결제 오류 또는 서비스 장애 시에는 환불 처리해 드립니다.</p></div></div>
+            <div class="faq-item"><div class="faq-q">수익을 보장하나요?</div><div class="faq-a"><p>어떤 도구도 수익을 보장하지 않습니다. 투자나침반이 해드리는 건 <strong>"기준 있는 매매를 할 수 있는 환경"</strong>을 제공하는 것이에요. 기준이 생기면 져도 복기할 수 있고, 복기가 쌓이면 실력이 됩니다.</p></div></div>
+        </div>
+    </div>
+</section>
+
+<!-- FINAL CTA -->
+<section class="final-cta">
+    <div class="container fade-up">
+        <h2>기준이 있는 사람은<br>시장에서 살아남습니다</h2>
+        <p>감으로 매매하던 시간을 끝내세요.<br>오늘부터 체크리스트 하나로 시작할 수 있습니다.</p>
+        <div class="final-buttons">
+            <a href="https://www.latpeed.com/memberships/6826d3aa2ce9b92d5c889a3f" target="_blank" class="btn btn-primary btn-large">PRO 시작하기</a>
+            <a href="https://t.me/xrp5555555" target="_blank" class="btn btn-ghost btn-large">텔레그램 문의</a>
+        </div>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+    <div class="container">
+        <p>© 2026 투자나침반. All rights reserved.</p>
+        <p class="warn">⚠️ 본 서비스는 투자 권유가 아닌 교육 목적의 분석 도구입니다. 모든 투자 판단과 그에 따른 결과의 책임은 이용자 본인에게 있습니다.</p>
+    </div>
+</footer>
+
+<script>
+document.querySelectorAll('.faq-q').forEach(q => {
+    q.addEventListener('click', () => {
+        const item = q.parentElement;
+        const wasOpen = item.classList.contains('open');
+        document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('open'));
+        if (!wasOpen) item.classList.add('open');
+    });
+});
+
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) entry.target.classList.add('visible');
+    });
+}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
