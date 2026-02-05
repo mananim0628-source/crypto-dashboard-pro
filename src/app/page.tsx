@@ -23,7 +23,7 @@ export default function Home() {
     },
     {
       q: "무료로 이용할 수 있나요?",
-      a: "네, 무료 회원도 핵심 코인 4개의 기본 점수와 시그널을 확인할 수 있습니다. PRO 회원은 7단계 상세 분석, 진입가/목표가/손절가, AI 코멘트, 무제한 검색 등 모든 기능을 이용할 수 있습니다."
+      a: "네, 무료 회원도 핵심 코인 4개의 기본 점수와 시그널을 확인할 수 있습니다. PRO 회원은 7단계 상세 분석, 분석 기준가/상단 저항/하단 지지, AI 코멘트, 무제한 검색 등 모든 기능을 이용할 수 있습니다."
     },
     {
       q: "환불이 가능한가요?",
@@ -181,7 +181,7 @@ export default function Home() {
             <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
               <div className="text-3xl mb-4">🎯</div>
               <h3 className="text-lg font-bold mb-2">참고용 가격대</h3>
-              <p className="text-white/60 text-sm">진입가, 목표가, 손절가를 자동 계산하여 리스크 관리 학습에 활용할 수 있습니다</p>
+              <p className="text-white/60 text-sm">분석 기준가, 상단 저항, 하단 지지를 자동 계산하여 시장 분석 학습에 활용할 수 있습니다</p>
             </div>
             
             <div className="bg-[#1a1a2e] rounded-2xl p-6 border border-white/10 hover:border-[#00d395]/30 transition">
@@ -309,10 +309,10 @@ export default function Home() {
               <p className="text-3xl font-bold mb-4">₩0</p>
               <ul className="text-sm text-white/60 space-y-2 text-left">
                 <li>✓ 핵심 코인 4개 기본 점수</li>
-                <li>✓ 시그널 확인 (매수/관망/매도)</li>
+                <li>✓ 시그널 확인 (긍정/중립/부정)</li>
                 <li>✓ 즐겨찾기 3개</li>
                 <li className="text-white/30">✗ 7단계 상세 분석</li>
-                <li className="text-white/30">✗ 진입가/목표가/손절가</li>
+                <li className="text-white/30">✗ 분석 기준가/상단 저항/하단 지지</li>
               </ul>
               <Link href="/signup" className="block mt-6 py-2 border border-white/20 rounded-lg hover:bg-white/10 transition text-sm">
                 무료로 시작
@@ -327,7 +327,7 @@ export default function Home() {
               <ul className="text-sm text-white/80 space-y-2 text-left">
                 <li>✓ 모든 무료 기능</li>
                 <li>✓ <strong>7단계 상세 분석</strong></li>
-                <li>✓ <strong>진입가/목표가/손절가</strong></li>
+                <li>✓ <strong>분석 기준가/상단 저항/하단 지지</strong></li>
                 <li>✓ <strong>AI 분석 코멘트</strong></li>
                 <li>✓ 무제한 코인 검색</li>
                 <li>✓ 상승 코인 TOP 6</li>
@@ -439,7 +439,7 @@ export default function Home() {
               투자 결정에 따른 손익은 전적으로 이용자 본인에게 귀속됩니다. 암호화폐 투자는 원금 손실의 위험이 있습니다.
             </p>
             <p className="text-white/30 text-xs mt-4">
-              © 2025 투자나침반. All rights reserved.
+              © 2026 투자나침반. All rights reserved.
             </p>
           </div>
         </div>
