@@ -34,7 +34,8 @@ export default function InstallBanner() {
 
     if (isIOS) {
       setPlatform('ios')
-      setIsInAppBrowser(inApp || !(/Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS|Whale/.test(ua)))
+      const isNotSafari = /CriOS|FxiOS|OPiOS|EdgiOS|Whale|Chrome/i.test(ua) || !(/Safari/.test(ua))
+setIsInAppBrowser(inApp || isNotSafari)
       // iOS: Safari에서만 홈화면 추가 가능하므로 항상 배너 표시
       // 단, 이미 dismiss 했으면 24시간 후 다시 표시
       const dismissed = localStorage.getItem('install_dismissed')
