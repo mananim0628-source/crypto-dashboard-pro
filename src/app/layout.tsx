@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import InstallBanner from '@/components/InstallBanner'
 
 export const metadata: Metadata = {
   title: '크립토 대시보드 PRO - AI 기반 암호화폐 분석',
@@ -19,7 +20,10 @@ export default function RootLayout({
         <meta name="theme-color" content="#00D395" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <InstallBanner />
+      </body>
     </html>
   )
 }
