@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
+const PushNotification = dynamic(() => import('@/components/PushNotification'), { ssr: false })
+const InstallBanner = dynamic(() => import('@/components/InstallBanner'), { ssr: false })
 
 type Lang = 'ko' | 'en'
 type Profile = { id: string; email: string; nickname: string; plan: 'free' | 'pro' | 'vip'; plan_expires_at: string | null; telegram_id: string | null }
@@ -616,6 +619,7 @@ const generateDetailedAIComment = (coin: AnalyzedCoin): string => {
               <div className={`hidden md:block text-sm ${currentColors.textSecondary}`}>{lastUpdate.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US')} | <span className="text-[#00d395]">{countdown}s</span></div>
               <span className={`hidden lg:block ${currentColors.textSecondary}`}>{profile?.nickname || user?.email?.split('@')[0]}</span>
               <Link href="/pricing" className="hidden md:block text-sm text-[#00d395]">{txt('요금제', 'Pricing')}</Link>
+              <PushNotification />
               <div className="relative" ref={notificationRef}><button type="button" onClick={() => setShowNotifications(!showNotifications)} className={`relative p-2 rounded-full ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`}>🔔{unreadCount > 0 && <span className="absolute -top-1 -right-1 bg-[#ff6b6b] text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">{unreadCount > 9 ? '9+' : unreadCount}</span>}</button>{showNotifications && (<div className={`absolute right-0 top-12 w-80 max-h-96 overflow-y-auto rounded-xl border shadow-2xl z-50 ${currentColors.cardBg} ${currentColors.cardBorder}`}><div className="p-3 border-b flex justify-between items-center"><span className={`font-bold ${currentColors.text}`}>🔔 {txt('알림', 'Notifications')}</span>{notifications.length > 0 && <button type="button" onClick={markAllRead} className="text-xs text-[#00d395]">{txt('모두 읽음', 'Mark all read')}</button>}</div>{notifications.length === 0 ? <div className={`p-6 text-center ${currentColors.textSecondary}`}>{txt('알림 없음', 'No notifications')}</div> : notifications.slice(0, 10).map(n => (<div key={n.id} className={`p-3 border-b ${theme === 'dark' ? 'border-white/5' : 'border-gray-100'} ${!n.read ? (theme === 'dark' ? 'bg-[#00d395]/10' : 'bg-green-50') : ''}`}><p className={`text-sm ${currentColors.text}`}>{n.message}</p><p className={`text-xs ${currentColors.textSecondary} mt-1`}>{n.time.toLocaleTimeString(lang === 'ko' ? 'ko-KR' : 'en-US')}</p></div>))}</div>)}</div>
               <button type="button" onClick={() => supabase.auth.signOut()} className={`p-2 rounded-full ${theme === 'dark' ? 'bg-white/10 hover:bg-white/20' : 'bg-gray-200 hover:bg-gray-300'}`} title={txt('로그아웃', 'Logout')}>🚪</button>
             </div>
@@ -1030,6 +1034,7 @@ const generateDetailedAIComment = (coin: AnalyzedCoin): string => {
 
       <style jsx global>{`input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#00d395;cursor:grab;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3)}input[type="range"]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#00d395;cursor:grab;border:3px solid white}select{color:inherit}`}</style>
 
+      <InstallBanner />
       {/* 면책 배너 */}
       <div className={`fixed bottom-0 left-0 right-0 z-30 ${theme === 'dark' ? 'bg-[#0a0a14]/95 border-white/10' : 'bg-white/95 border-gray-200'} border-t backdrop-blur`}>
         <div className="max-w-[1600px] mx-auto px-4 py-2 text-center">
