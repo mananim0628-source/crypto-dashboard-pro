@@ -30,11 +30,11 @@ export default function InstallBanner() {
     const isAndroid = /Android/.test(ua)
 
     // 인앱 브라우저 감지 (카카오톡, 라인, 인스타그램, 페이스북 등)
-    const inApp = /KAKAOTALK|NAVER|Line|Instagram|FBAN|FBAV|Twitter|wv|WebView/i.test(ua)
+    const inApp = /KAKAOTALK|NAVER|Whale|Line|Instagram|FBAN|FBAV|Twitter|wv|WebView/i.test(ua)
 
     if (isIOS) {
       setPlatform('ios')
-      setIsInAppBrowser(inApp || !(/Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS/.test(ua)))
+      setIsInAppBrowser(inApp || !(/Safari/.test(ua) && !/CriOS|FxiOS|OPiOS|EdgiOS|Whale/.test(ua)))
       // iOS: Safari에서만 홈화면 추가 가능하므로 항상 배너 표시
       // 단, 이미 dismiss 했으면 24시간 후 다시 표시
       const dismissed = localStorage.getItem('install_dismissed')
