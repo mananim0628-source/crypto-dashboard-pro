@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>투자나침반 - 오프라인</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0e17;
+      color: #c8d0dc;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      padding: 20px;
+    }
+    .container { max-width: 400px; }
+    .icon { font-size: 64px; margin-bottom: 24px; }
+    h1 { color: #fff; font-size: 20px; margin-bottom: 12px; }
+    p { font-size: 14px; line-height: 1.6; margin-bottom: 24px; color: #5a6677; }
+    button {
+      background: #00D395;
+      color: #0a0e17;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    button:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🧭</div>
+    <h1>인터넷 연결이 필요합니다</h1>
+    <p>투자나침반은 실시간 시장 데이터를 사용하므로<br>인터넷 연결이 필요합니다.<br>연결 상태를 확인한 후 다시 시도해주세요.</p>
+    <button onclick="location.reload()">다시 시도</button>
+  </div>
+</body>
+</html>
